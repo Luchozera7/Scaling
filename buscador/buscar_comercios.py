@@ -1,7 +1,8 @@
 """Busca peluquerías, barberías y centros de estética en Tres de Febrero
 usando OpenStreetMap (Overpass API, gratis y sin claves).
 
-Guarda una planilla CSV ordenada por cercanía a Pablo Podestá.
+Guarda una planilla CSV ordenada por cercanía a Villa Bosch, Ciudad Jardín
+y Martín Coronado.
 
 Uso:  python3 buscador/buscar_comercios.py
 """
@@ -15,7 +16,12 @@ import urllib.request
 from pathlib import Path
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-PODESTA = (-34.5833, -58.6167)  # centro aproximado de Pablo Podestá
+# Centros aproximados de las zonas objetivo.
+ZONAS = {
+    "Villa Bosch": (-34.5886, -58.5786),
+    "Ciudad Jardín": (-34.6075, -58.5925),
+    "Martín Coronado": (-34.5900, -58.5950),
+}
 CANTIDAD = 30
 SALIDA = Path(__file__).parent / "comercios.csv"
 
@@ -36,8 +42,8 @@ RUBROS = {
 }
 
 
-def distancia_km(lat, lon):
-    lat1, lon1 = map(math.radians, PODESTA)
+def distancia_km(centro, lat, lon):
+    lat1, lon1 = map(math.radians, centro)
     lat2, lon2 = math.radians(lat), math.radians(lon)
     a = (math.sin((lat2 - lat1) / 2) ** 2
          + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2)
@@ -51,6 +57,7 @@ def a_fila(elemento):
     rubro = RUBROS.get(t.get("shop"), t.get("shop"))
     if t.get("hairdresser") == "barber":
         rubro = "Barbería"
+    zona, centro = min(ZONAS.items(), key=lambda z: distancia_km(z[1], lat, lon))
     direccion = " ".join(x for x in (t.get("addr:street"), t.get("addr:housenumber")) if x)
     return {
         "nombre": t.get("name", ""),
@@ -60,7 +67,8 @@ def a_fila(elemento):
         "telefono": t.get("phone") or t.get("contact:phone") or t.get("contact:whatsapp") or "",
         "web": t.get("website") or t.get("contact:website") or "",
         "instagram": t.get("contact:instagram", ""),
-        "distancia_km": round(distancia_km(lat, lon), 1),
+        "zona_cercana": zona,
+        "distancia_km": round(distancia_km(centro, lat, lon), 1),
         "fuente": f"https://www.openstreetmap.org/{elemento['type']}/{elemento['id']}",
     }
 
@@ -83,7 +91,7 @@ def main():
 
     con_tel = sum(1 for f in filas if f["telefono"])
     print(f"OpenStreetMap devolvió {len(elementos)} comercios del rubro en Tres de Febrero.")
-    print(f"Guardé los {len(filas)} más cercanos a Podestá en {SALIDA}")
+    print(f"Guardé los {len(filas)} más cercanos a Villa Bosch, Ciudad Jardín y Martín Coronado en {SALIDA}")
     print(f"Con teléfono: {con_tel} de {len(filas)}")
     if not filas:
         sys.exit(1)
