@@ -12,23 +12,25 @@ No le cambies el nombre a las pestañas ni a las columnas de la primera fila: lo
 
 | Pestaña | Para qué |
 |---|---|
-| Comercios | Los comercios a evaluar. |
+| Comercios | Los comercios a evaluar. Los interesados que llegan por el chatbot de leads se suman solos. |
 | Evaluaciones | Lo que dijeron IT, Prospección y Finanzas de cada comercio. |
 | Propuestas | La propuesta del Jefe de Gabinete para vos. |
 | Adelantos | La maqueta para mostrarle a cada comercio y lo que dijo Legal de esa oferta. |
 | Contratos | Los borradores de contrato de los clientes que aceptaron. |
+| Implementaciones | El plan de trabajo de IT para cada cliente que firmó. |
 | Informes | Los informes del Contador, Posventa, Marketing y las revisiones de seguridad. |
 | Clientes | Tus clientes (la cargás vos cuando cierres uno). |
 | Caja | Ingresos y gastos (la cargás vos). |
 | Soporte | Cada mensaje del chatbot de soporte. |
 | FAQ | Preguntas y respuestas para el chatbot de soporte (la cargás vos). |
-| Leads | Cada mensaje del chatbot de leads; los que tienen lead_completo en TRUE son para contactar. |
+| Leads | Cada mensaje del chatbot de leads. |
+| Casos | Lo que revisó el Administrador de Atención de cada conversación: a quién la derivó, la prioridad y la nota del chatbot. En "estado" anotás cuando lo resolviste. |
 | Info | El texto con el que el chatbot de leads presenta a Scaling. |
 | Seguimiento | Cómo te fue con cada comercio que contactaste. |
 
 ## Paso 2. Importar los flujos
 
-Son siete archivos en `n8n/`:
+Son nueve archivos en `n8n/`:
 
 1. `1_mesa_chica_semanal.json`: IT, Prospección, Finanzas, el adelanto, Legal y el Jefe de Gabinete.
 2. `2_informes_del_mes.json`: Contador, Posventa y Marketing.
@@ -37,6 +39,8 @@ Son siete archivos en `n8n/`:
 5. `5_revision_de_seguridad.json`: la revisión de seguridad de cada oferta.
 6. `6_contrato_de_cliente.json`: el contrato, cuando un cliente acepta.
 7. `7_ver_adelantos.json`: el link para mostrarle el adelanto al comercio.
+8. `8_mesa_de_entrada.json`: el Administrador de Atención, que revisa lo que hacen los dos chatbots.
+9. `9_plan_de_implementacion.json`: el plan de trabajo de IT cuando un cliente firma.
 
 Para cada uno: en n8n creá un workflow nuevo, tocá los **tres puntitos** de arriba a la derecha → **Import from File...** y elegí el archivo.
 
@@ -53,6 +57,8 @@ En la mesa chica, Config también tiene:
 - **max_comercios**: cuántos comercios evalúa por vez. Dejalo en 5 mientras probás.
 - **valor_hora_ars**: el valor de tu hora para que Finanzas arme presupuestos.
 
+En la mesa de entrada (flujo 8), Config también tiene **aviso_mail**: el mail donde te llegan los casos urgentes. En **Avisar a Lucho** elegí tu cuenta de Gmail.
+
 En **Ver adelantos** (flujo 7) elegí una credencial *Basic Auth*: creala con un usuario y una contraseña que inventes vos. El link de los adelantos te los va a pedir, así nadie más los ve.
 
 Cada flujo tiene una nota amarilla con estos mismos pasos.
@@ -66,7 +72,7 @@ Cuánto gasta la mesa chica con 5 comercios: unos 26 pedidos a Claude, entre 1 y
 
 ## Paso 5. Dejarlo automático
 
-Cuando todo ande, tocá **Publish** en la mesa chica (corre los lunes a las 9), en los informes (corren el día 1 de cada mes a las 9) y en Ver adelantos (si no está publicado, el link no anda). Los chatbots quedan en modo práctica hasta que decidas conectarlos a WhatsApp.
+Cuando todo ande, tocá **Publish** en la mesa chica (corre los lunes a las 9), en los informes (corren el día 1 de cada mes a las 9), en la mesa de entrada (corre cada 3 horas) y en Ver adelantos (si no está publicado, el link no anda). Los chatbots quedan en modo práctica hasta que decidas conectarlos a WhatsApp.
 
 ## Llevarle la propuesta a un comercio
 
@@ -82,9 +88,19 @@ Cuando todo ande, tocá **Publish** en la mesa chica (corre los lunes a las 9), 
 
 Cada contrato es un pedido a Claude de unos 30 centavos de dólar.
 
+## Cuando el cliente firma
+
+1. Si todavía no corriste la revisión de seguridad de esa oferta (flujo 5), correla primero: el plan la usa para las pruebas antes de entregar.
+2. Abrí el flujo 9 y en **Config** completá el cliente, la oferta y lo acordado.
+3. **Execute workflow**. El plan queda en **Implementaciones**: tareas por día, qué pedirle al comercio y qué probar antes de entregar.
+
+## La mesa de entrada
+
+Cada 3 horas, el Administrador de Atención lee las conversaciones de los dos chatbots que terminaron (sin mensajes hace media hora). Cada una queda en **Casos**. Los interesados pasan a **Comercios** y la mesa chica los evalúa antes que al resto. Lo urgente te llega por mail. Las preguntas que sugiere sumar al FAQ o a Info las agregás vos si te cierran.
+
 ## Lo que falta
 
-- **La base de comercios.** Hoy la mesa evalúa los primeros comercios de la pestaña cada vez que corre. Cuando armemos la búsqueda de comercios, la mesa va a evaluar solo los nuevos.
+- **La base de comercios.** La mesa evalúa los comercios que todavía no están en Evaluaciones, primero los leads. Si querés que vuelva a evaluar uno, borrá su fila de Evaluaciones. Falta la búsqueda de comercios nuevos.
 - **Que Finanzas lea el informe del Contador.** Hoy le dice "todavía no hay".
 
 ## Si algo falla

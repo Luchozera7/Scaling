@@ -7,7 +7,7 @@
         "width": 400,
         "height": 240
       },
-      "id": "ba4ca686-9ab1-4b69-b974-cf547c29c08f",
+      "id": "41084f2b-8ce2-4510-8d02-e9b9bfa546f5",
       "name": "Nota 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -24,7 +24,7 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "ed72126a-386e-4ca5-a70a-d7eb9ed5968f",
+      "id": "48a3df9c-4b1b-48ed-aed9-a9fd63404cf2",
       "name": "Ver adelantos",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
@@ -32,7 +32,7 @@
         0,
         0
       ],
-      "webhookId": "fac57069-682d-4c9b-b173-34869a9244cf"
+      "webhookId": "a013dab0-ee68-4178-a38d-efa13158de1f"
     },
     {
       "parameters": {
@@ -40,7 +40,7 @@
         "assignments": {
           "assignments": [
             {
-              "id": "bfd6cf96-8bb6-4f4a-86f2-f64ae981e685",
+              "id": "8535db82-b18b-4d8a-a17f-a56687a0841f",
               "name": "planilla",
               "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
               "type": "string"
@@ -49,7 +49,7 @@
         },
         "options": {}
       },
-      "id": "d69a92a6-0e6d-4790-99be-67cfda8ac76f",
+      "id": "046447d1-a0f9-4c90-b642-09cd633e7325",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -74,7 +74,7 @@
         },
         "options": {}
       },
-      "id": "7e5ecaad-2da9-41de-9037-55b8969d582d",
+      "id": "fa0f62f8-cf03-4b9e-9118-e084307938fe",
       "name": "Leer adelantos",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -89,7 +89,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst pedido = $('Ver adelantos').first().json.query.comercio;\nconst ultimos = new Map();\nfor (const i of $input.all()) if (i.json.comercio) ultimos.set(i.json.comercio, i.json);\nconst elegido = ultimos.get(pedido);\nif (elegido && elegido.html) return [{ json: { html: elegido.html } }];\nconst esc = s => String(s ?? '').replace(/[&<>\"']/g, c => '&#' + c.charCodeAt(0) + ';');\nconst lista = [...ultimos.values()].reverse().map(a =>\n  `<li><a href='?comercio=${encodeURIComponent(a.comercio)}'>${esc(a.comercio)}</a><br><small>${esc(a.oferta)} · ${esc(a.fecha)}</small></li>`).join('');\nreturn [{ json: { html: `<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1'><title>Adelantos de Scaling</title>\n<style>body{font-family:sans-serif;margin:16px;line-height:1.4}li{margin:14px 0}a{font-size:1.1em}</style></head>\n<body><h1>Adelantos</h1>${lista ? '<ul>' + lista + '</ul>' : '<p>Todavía no hay adelantos. Se arman cuando corre la mesa chica.</p>'}</body></html>` } }];"
       },
-      "id": "03c2bc48-3a8d-41af-b50f-997df3b23ea7",
+      "id": "0bbb9bfb-173d-431c-bf76-24752bf1eece",
       "name": "Armar página",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -113,7 +113,7 @@
           }
         }
       },
-      "id": "e6ccd3d4-f214-41b2-8ab4-01788760d4da",
+      "id": "13405a98-6a05-4c95-91a2-3b5c454b70e8",
       "name": "Mostrar página",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.4,

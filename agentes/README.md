@@ -19,6 +19,10 @@ Los agentes 1 a 3 se corren una vez por comercio. El adelanto y Legal solo se co
 
 - `legal_contrato.md` (Legal): borrador del contrato con lo que acordó Lucho con el cliente, los riesgos y lo que falta completar.
 
+## Cuando un cliente firma
+
+- `implementacion.md` (IT y Producto): plan de trabajo desde la firma hasta que la solución anda: tareas por día, qué pedirle al comercio, herramientas, pruebas antes de entregar y capacitación.
+
 ## Una vez por tipo de oferta
 
 - `seguridad.md` (IT y Producto): revisión de seguridad de cada oferta (fuga de prompts, manipulación, datos, claves). Se repite solo si la oferta cambia.
@@ -29,6 +33,10 @@ Los agentes 1 a 3 se corren una vez por comercio. El adelanto y Legal solo se co
 - `posventa.md`: cuida a los clientes que ya pagan, con la pestaña "Soporte". Su resumen va al Jefe de Gabinete.
 - `marketing.md` (gerente): contenido para mostrar lo que hace Scaling, y revisa y aprueba lo de Marketing para Clientes.
 - `marketing_clientes.md` (bajo la gerente de Marketing): propuestas de marketing para cada cliente.
+
+## Mesa de entrada (cada 3 horas)
+
+- `administrador_atencion.md`: supervisa a los dos chatbots. Clasifica cada conversación terminada, califica a los interesados, le pone nota al chatbot y deriva: a la mesa chica (interesados) o a Lucho (lo que necesita de él). Propone mejoras al FAQ que decide Lucho.
 
 ## Chatbots (responden en el momento)
 
@@ -55,5 +63,5 @@ Siempre JSON, con el mismo formato base, para que n8n lo pueda guardar en la pla
 }
 ```
 
-Cada agente agrega sus propios campos (por ejemplo `oferta` o `presupuesto`). Legal, el adelanto, el Contador, Posventa, Marketing, el Jefe de Gabinete y los chatbots usan su propio formato.
+Cada agente agrega sus propios campos (por ejemplo `oferta` o `presupuesto`). Legal, el adelanto, la implementación, el Administrador de Atención, el Contador, Posventa, Marketing, el Jefe de Gabinete y los chatbots usan su propio formato.
 Si un dato no se sabe, el agente pone "sin dato" y no lo inventa.

@@ -7,7 +7,7 @@
         "width": 400,
         "height": 240
       },
-      "id": "20fc1195-c329-4ba9-bbf5-63d31f2916b6",
+      "id": "e0be1331-24e2-41eb-a02d-13d8703acd47",
       "name": "Nota 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -18,7 +18,7 @@
     },
     {
       "parameters": {},
-      "id": "2d35bc03-56e5-48fe-a0c5-99d044309326",
+      "id": "6f09c9f6-c16a-4888-bb8f-90111bc2b9c5",
       "name": "Probar a mano",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -33,19 +33,19 @@
         "assignments": {
           "assignments": [
             {
-              "id": "a2ff55ad-f3c0-40a3-81fe-452697916bf5",
+              "id": "e4eebba8-9510-4cd0-a261-29a3fabd8e4b",
               "name": "planilla",
               "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
               "type": "string"
             },
             {
-              "id": "ca7b6b9a-91a0-4ca6-a1b5-c6d7aed05d16",
+              "id": "34b6d1df-a58b-4251-af42-77514bd7a8a4",
               "name": "oferta",
               "value": "turnos online",
               "type": "string"
             },
             {
-              "id": "fcdd51c8-1ee8-4cc1-8cf2-e445fea52e9e",
+              "id": "2822a9d4-021c-4f39-b1cc-6f0a72325992",
               "name": "como_la_armamos",
               "value": "Completar: qué herramienta usamos, dónde se guardan los datos y quién accede.",
               "type": "string"
@@ -54,7 +54,7 @@
         },
         "options": {}
       },
-      "id": "26b18876-0179-4742-936e-30a89fb74792",
+      "id": "f8356690-9b3d-41f7-8a33-5c8746796eb3",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -87,7 +87,7 @@
           "maxTokens": 4000
         }
       },
-      "id": "372b87ee-4b55-4d91-95f2-6ed6e24a1f25",
+      "id": "28e9d937-ac2e-4bf0-8a67-7bf293073d84",
       "name": "Seguridad",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
@@ -100,7 +100,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, agente: 'Seguridad: ' + (r.oferta || ''), resumen: (r.se_puede_vender ? 'Se puede vender. ' : 'No se puede vender todavía. ') + (r.motivo || r.texto || ''), detalle: celda(JSON.stringify(r)) } }];"
       },
-      "id": "8cea9abd-ec09-41dc-8675-13c3ac22e8a5",
+      "id": "2d6ec8cc-8eb4-4374-a3be-5c4b1464bca0",
       "name": "Armar informe",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -133,7 +133,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "7477589d-b1f9-420c-b443-ade15b55f0bd",
+      "id": "6117e8ff-cb76-4f60-a64a-73579b2d5013",
       "name": "Guardar informe",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,

@@ -3,11 +3,11 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Mesa chica semanal\n1. En **Config** pegá el link de tu planilla y el valor de tu hora.\n2. En cada nodo de Claude y de Google Sheets elegí tu credencial.\n3. Para probar: **Execute workflow**. Evalúa los primeros comercios (max_comercios en Config).\n4. El resultado queda en las pestañas **Evaluaciones**, **Adelantos** y **Propuestas**.\n\nEl disparador Automático corre los lunes a las 9 cuando publiques el flujo.",
+        "content": "## Mesa chica semanal\n1. En **Config** pegá el link de tu planilla y el valor de tu hora.\n2. En cada nodo de Claude y de Google Sheets elegí tu credencial.\n3. Para probar: **Execute workflow**. Evalúa los comercios que todavía no evaluó, primero los leads (max_comercios en Config).\n4. El resultado queda en las pestañas **Evaluaciones**, **Adelantos** y **Propuestas**.\n\nEl disparador Automático corre los lunes a las 9 cuando publiques el flujo.",
         "width": 400,
         "height": 240
       },
-      "id": "ce7372cf-a67a-4ee9-8bfe-5816f37a0208",
+      "id": "6f7f2f12-a9e9-4797-b785-0ca88bb8e767",
       "name": "Nota 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -18,7 +18,7 @@
     },
     {
       "parameters": {},
-      "id": "bc679e8d-5ea8-4d26-a5c0-e9a820fa9058",
+      "id": "5646e6bd-19ae-44c9-a267-c5897a1dd919",
       "name": "Probar a mano",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -41,7 +41,7 @@
           ]
         }
       },
-      "id": "a986c51a-c01e-45bf-bc8e-9585379ae837",
+      "id": "29e445a6-da68-4367-8707-ae869cde0df6",
       "name": "Automático",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -56,19 +56,19 @@
         "assignments": {
           "assignments": [
             {
-              "id": "b2d2b7de-a7ec-4a51-99c1-ed14a368af07",
+              "id": "5927a597-9663-48ce-ac0f-15fd25da2252",
               "name": "planilla",
               "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
               "type": "string"
             },
             {
-              "id": "f2751bb3-693b-4ea3-92eb-cf6c8040c679",
+              "id": "ec94e818-9576-483a-8bee-7261c4816fec",
               "name": "max_comercios",
               "value": 5,
               "type": "number"
             },
             {
-              "id": "b8988242-fa5e-4524-ac28-6318fb017937",
+              "id": "202c88ce-cd8b-4986-a2e3-37281d7732e2",
               "name": "valor_hora_ars",
               "value": "sin definir",
               "type": "string"
@@ -77,7 +77,7 @@
         },
         "options": {}
       },
-      "id": "76f92d0e-f8a4-40f7-9189-dd14f664fed6",
+      "id": "22337692-e045-4a8c-a5a7-b0bf5ec39a6a",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -102,7 +102,7 @@
         },
         "options": {}
       },
-      "id": "90445e05-37d0-47e7-859f-1b9cceb30d0e",
+      "id": "ef372396-1e86-4f29-a374-3ba52b6d924f",
       "name": "Leer comercios",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -115,14 +115,41 @@
     },
     {
       "parameters": {
-        "maxItems": "={{ $('Config').first().json.max_comercios }}"
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Evaluaciones"
+        },
+        "options": {}
       },
-      "id": "723cd64b-b405-41a1-aa1b-d01e69960b33",
-      "name": "Limitar comercios",
-      "type": "n8n-nodes-base.limit",
-      "typeVersion": 1,
+      "id": "d5744d7b-604b-420c-ad8a-fc6c4c276ce3",
+      "name": "Leer evaluaciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
       "position": [
         720,
+        0
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\n// Solo los que no se evaluaron todavía, primero los que llegaron por el chatbot de leads.\nconst evaluados = new Set($input.all().map(i => i.json.comercio).filter(Boolean));\nconst pendientes = $('Leer comercios').all().map(i => i.json).filter(c => c.nombre && !evaluados.has(c.nombre));\nconst esLead = c => String(c.fuente || '').startsWith('Lead');\nreturn [...pendientes.filter(esLead), ...pendientes.filter(c => !esLead(c))]\n  .slice(0, $('Config').first().json.max_comercios).map(json => ({ json }));"
+      },
+      "id": "ea6fbe3a-418b-4a7e-9c7c-7f5e488c3457",
+      "name": "Elegir comercios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
         0
       ]
     },
@@ -150,26 +177,26 @@
           "maxTokens": 4000
         }
       },
-      "id": "954741d2-692f-4ee6-bd47-6f8d2696b208",
+      "id": "763e8a68-540a-4c53-a85d-298ce39c3044",
       "name": "IT y Producto",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
       "position": [
-        960,
+        1200,
         0
       ]
     },
     {
       "parameters": {
-        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn { comercio: $('Limitar comercios').item.json, it: leer($json) };",
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn { comercio: $('Elegir comercios').item.json, it: leer($json) };",
         "mode": "runOnceForEachItem"
       },
-      "id": "caa299b9-be2d-40c0-817d-7020a89176d6",
+      "id": "1ba61219-89b6-497b-a681-c0562c526b77",
       "name": "Leer IT",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1200,
+        1440,
         0
       ]
     },
@@ -192,17 +219,17 @@
         },
         "simplify": true,
         "options": {
-          "system": "Sos el responsable de Prospección de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio.\n\nTe van a pasar los datos de un comercio (de OpenStreetMap) y la evaluación de IT y Producto. Tu trabajo es decir qué tan buen cliente sería.\n\nQué mirar:\n- Zona: Villa Bosch, Ciudad Jardín y Martín Coronado tienen clientes con más poder de compra; las demás zonas puntúan menos.\n- Si tiene teléfono cargado, se le puede escribir; sin teléfono, el contacto es más difícil.\n- Si tiene web o Instagram, ya invierte en lo digital y es más fácil de convencer.\n- No inventes datos. Si algo no está, poné \"sin dato\".\n\nPuntaje del 1 al 10: qué tan probable es que acepte y pague.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Prospección\",\n  \"comercio\": \"<nombre>\",\n  \"puntaje\": <1 a 10>,\n  \"motivo\": \"<una o dos oraciones>\",\n  \"como_contactarlo\": \"<WhatsApp al número cargado | pasar por el local | sin forma de contacto>\",\n  \"datos\": [{\"dato\": \"<qué usaste>\", \"fuente\": \"<de dónde salió>\"}]\n}",
+          "system": "Sos el responsable de Prospección de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio.\n\nTe van a pasar los datos de un comercio (de OpenStreetMap) y la evaluación de IT y Producto. Tu trabajo es decir qué tan buen cliente sería.\n\nQué mirar:\n- Zona: Villa Bosch, Ciudad Jardín y Martín Coronado tienen clientes con más poder de compra; las demás zonas puntúan menos.\n- Si tiene teléfono cargado, se le puede escribir; sin teléfono, el contacto es más difícil.\n- Si tiene web o Instagram, ya invierte en lo digital y es más fácil de convencer.\n- Si el comercio nos escribió por el chatbot (la fuente empieza con \"Lead\"), ya mostró interés y eso pesa mucho a favor. Leé sus notas.\n- No inventes datos. Si algo no está, poné \"sin dato\".\n\nPuntaje del 1 al 10: qué tan probable es que acepte y pague.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Prospección\",\n  \"comercio\": \"<nombre>\",\n  \"puntaje\": <1 a 10>,\n  \"motivo\": \"<una o dos oraciones>\",\n  \"como_contactarlo\": \"<WhatsApp al número cargado | pasar por el local | sin forma de contacto>\",\n  \"datos\": [{\"dato\": \"<qué usaste>\", \"fuente\": \"<de dónde salió>\"}]\n}",
           "includeMergedResponse": true,
           "maxTokens": 4000
         }
       },
-      "id": "7c52d78f-638f-4c3f-8080-fae01d30e2c1",
+      "id": "dc88a22f-ae92-4803-bd33-bb6a9b7d4f12",
       "name": "Prospección",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
       "position": [
-        1440,
+        1680,
         0
       ]
     },
@@ -211,12 +238,12 @@
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn { ...$('Leer IT').item.json, prospeccion: leer($json) };",
         "mode": "runOnceForEachItem"
       },
-      "id": "a857f85f-d76f-459f-a6d0-e80117c7b240",
+      "id": "bed960c8-c507-4318-9bcd-b0ae38107db9",
       "name": "Leer Prospección",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1680,
+        1920,
         0
       ]
     },
@@ -244,12 +271,12 @@
           "maxTokens": 6000
         }
       },
-      "id": "b07bcadb-fe60-4f2b-8cf3-47a078b88622",
+      "id": "8d426999-0bbd-4af6-acb9-d843bf75aeb8",
       "name": "Finanzas",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
       "position": [
-        1920,
+        2160,
         0
       ]
     },
@@ -258,12 +285,12 @@
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst e = { ...$('Leer Prospección').item.json, finanzas: leer($json) };\ne.total = (Number(e.it.puntaje) || 0) + (Number(e.prospeccion.puntaje) || 0) + (Number(e.finanzas.puntaje) || 0);\nreturn e;",
         "mode": "runOnceForEachItem"
       },
-      "id": "7db754e4-8a78-41f9-8173-d91c7a4e4000",
+      "id": "863a91bd-8f58-4fbd-ab4d-f6cbf357294f",
       "name": "Leer Finanzas",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2160,
+        2400,
         0
       ]
     },
@@ -272,12 +299,12 @@
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn {\n  fecha: hoy, comercio: $json.comercio.nombre, total: $json.total,\n  it_puntaje: $json.it.puntaje, it_oferta: $json.it.oferta, it_motivo: $json.it.motivo,\n  prospeccion_puntaje: $json.prospeccion.puntaje, prospeccion_motivo: $json.prospeccion.motivo,\n  finanzas_puntaje: $json.finanzas.puntaje, finanzas_motivo: $json.finanzas.motivo,\n  abono_mensual_ars: $json.finanzas.presupuesto?.abono_mensual_ars,\n  detalle: celda(JSON.stringify({ it: $json.it, prospeccion: $json.prospeccion, finanzas: $json.finanzas })),\n};",
         "mode": "runOnceForEachItem"
       },
-      "id": "e4abbfc8-39ee-46a1-a6f0-7c6f1f879a95",
+      "id": "87dab522-7880-4a64-bc7a-170b4c29c5ed",
       "name": "Armar fila",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2400,
+        2640,
         0
       ]
     },
@@ -305,12 +332,12 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "83e424ba-2d08-49f4-99bd-215d3471f554",
+      "id": "e0bc448c-05a7-4a9e-b626-bd4ee1829dab",
       "name": "Guardar evaluaciones",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        2640,
+        2880,
         0
       ]
     },
@@ -318,12 +345,12 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn $('Leer Finanzas').all().map(i => i.json)\n  .sort((a, b) => b.total - a.total).slice(0, 5).map(json => ({ json }));"
       },
-      "id": "cd2aa6e0-a7aa-4434-af16-2b906ddbd782",
+      "id": "6655b915-39ed-4559-ab84-367dddbb67e3",
       "name": "Elegir los 5 mejores",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2880,
+        3120,
         0
       ],
       "executeOnce": true
@@ -352,12 +379,12 @@
           "maxTokens": 8000
         }
       },
-      "id": "c949e4c9-a8cd-40d0-a915-c0a03b07d2e0",
+      "id": "5bd5781d-3e28-4fff-b7ee-4ea17c50b1c2",
       "name": "Adelanto",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
       "position": [
-        3120,
+        3360,
         0
       ]
     },
@@ -366,12 +393,12 @@
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn { ...$('Elegir los 5 mejores').item.json, adelanto: leer($json) };",
         "mode": "runOnceForEachItem"
       },
-      "id": "a3ea4377-e923-4fae-b159-db5b1ee57eb0",
+      "id": "48a0f5f6-3a81-4be8-ba19-c17a620dee23",
       "name": "Leer adelanto",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3360,
+        3600,
         0
       ]
     },
@@ -399,12 +426,12 @@
           "maxTokens": 4000
         }
       },
-      "id": "fef4d210-fc82-4e75-a104-893bdbc75d00",
+      "id": "f1f47ac9-5744-4d7e-8b74-41b907922b8b",
       "name": "Legal",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
       "position": [
-        3600,
+        3840,
         0
       ]
     },
@@ -412,12 +439,12 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst legal = $input.all().map(i => leer(i.json));\n// Al Jefe le alcanza con saber qué muestra cada adelanto, sin la página entera.\nconst adelantos = $('Leer adelanto').all().map(i => { const { html, ...resto } = i.json.adelanto; return resto; });\nconst evaluaciones = $('Leer Finanzas').all().map(i => i.json);\nreturn [{ json: { evaluaciones, adelantos, legal } }];"
       },
-      "id": "152ffdc9-9e6d-447a-8860-74c567f2b76e",
+      "id": "ca13e986-0f88-4ee1-ad9a-27522d4e35b1",
       "name": "Juntar para el Jefe",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3840,
+        4080,
         0
       ]
     },
@@ -445,12 +472,12 @@
           "maxTokens": 12000
         }
       },
-      "id": "dcb4c581-e3fc-42a5-8e13-5c1437d6decd",
+      "id": "aa06096a-d735-4979-8275-7174902d2956",
       "name": "Jefe de Gabinete",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
       "position": [
-        4080,
+        4320,
         0
       ]
     },
@@ -458,12 +485,12 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst j = leer($json);\nreturn [{ json: {\n  fecha: hoy,\n  elegidos: (j.elegidos || []).map(e => e.comercio).join(', '),\n  propuesta_para_el_ceo: j.propuesta_para_el_ceo || j.texto,\n  detalle: celda(JSON.stringify(j)),\n} }];"
       },
-      "id": "2f71eeaf-22cc-4f3f-bf7a-a0fe86378c61",
+      "id": "73455ede-1f2d-4603-bf78-3017e7724946",
       "name": "Armar propuesta",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4320,
+        4560,
         0
       ]
     },
@@ -491,12 +518,12 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "cff0839d-e8cd-4340-b793-2b653ed4d88f",
+      "id": "20ed352a-0bf9-4714-97bc-b56179ea6e57",
       "name": "Guardar propuesta",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        4560,
+        4800,
         0
       ]
     },
@@ -505,12 +532,12 @@
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nconst e = $('Leer adelanto').item.json;\nreturn { fecha: hoy, comercio: e.comercio.nombre, oferta: e.it.oferta,\n  que_va_a_ver_el_cliente: e.adelanto.que_va_a_ver_el_cliente || e.adelanto.error,\n  legal: [r.se_puede_ofrecer, r.motivo || r.texto].filter(Boolean).join('. '),\n  supuestos: celda(JSON.stringify(e.adelanto.supuestos || [])), html: celda(e.adelanto.html || ''),\n  revision_legal: celda(JSON.stringify(r)) };",
         "mode": "runOnceForEachItem"
       },
-      "id": "18fd9bec-93e3-49a7-a908-98405b733c91",
+      "id": "2f02f765-f2f0-4e4c-a6b6-51c4829cddfb",
       "name": "Armar adelanto",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3840,
+        4080,
         240
       ]
     },
@@ -538,12 +565,12 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "aff5eb60-82c2-4a20-8a20-fc104797c1b7",
+      "id": "f68719ce-99c3-43a3-bb1c-751b1d7ab5c1",
       "name": "Guardar adelantos",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        4080,
+        4320,
         240
       ]
     }
@@ -586,14 +613,25 @@
       "main": [
         [
           {
-            "node": "Limitar comercios",
+            "node": "Leer evaluaciones",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Limitar comercios": {
+    "Leer evaluaciones": {
+      "main": [
+        [
+          {
+            "node": "Elegir comercios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Elegir comercios": {
       "main": [
         [
           {

@@ -1,0 +1,264 @@
+{
+  "name": "Scaling 9 - Plan de implementación",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Plan de implementación\nSe corre a mano cuando el cliente firma. IT arma el plan de trabajo hasta que la solución anda.\n1. En **Config** pegá el link de tu planilla y completá lo que acordaste con el cliente.\n2. Elegí tus credenciales en cada nodo.\n3. **Execute workflow**. El plan queda en **Implementaciones**.",
+        "width": 400,
+        "height": 240
+      },
+      "id": "787e2a38-7720-4967-9ad0-03685af66d30",
+      "name": "Nota 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "fd4a8869-d1c9-41cc-8477-d209d0a11c4e",
+      "name": "Probar a mano",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "82443624-72cd-465d-a0a1-ba0e5d0c1933",
+              "name": "planilla",
+              "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
+              "type": "string"
+            },
+            {
+              "id": "df6e2155-4ba8-4bdd-88ea-8d38201b1283",
+              "name": "cliente",
+              "value": "Nombre del comercio",
+              "type": "string"
+            },
+            {
+              "id": "587ea7dc-b7d7-4d5d-b5ab-1867015ede0f",
+              "name": "oferta",
+              "value": "turnos online",
+              "type": "string"
+            },
+            {
+              "id": "735f5707-769a-4f4c-a203-c0ed77af3c0f",
+              "name": "lo_acordado",
+              "value": "Completar: qué se entrega, plazos y precio",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f92f055a-471a-4ce7-9520-fc4d1fa90948",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Informes"
+        },
+        "options": {}
+      },
+      "id": "e09ce781-a5f9-49c6-b93b-4f1edfc0f1c4",
+      "name": "Leer informes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        0
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst cfg = $('Config').first().json;\nconst oferta = String(cfg.oferta).toLowerCase();\nconst revision = $input.all().map(i => i.json)\n  .filter(o => String(o.agente || '').toLowerCase().startsWith('seguridad:') && String(o.agente).toLowerCase().includes(oferta)).pop();\nreturn [{ json: { cliente: cfg.cliente, oferta: cfg.oferta, lo_acordado: cfg.lo_acordado,\n  revision_de_seguridad: revision ? revision.detalle : 'Todavía no hay revisión de seguridad de esta oferta.' } }];"
+      },
+      "id": "03581d8f-c8c6-4696-af5e-48a0eac60892",
+      "name": "Buscar revisión de seguridad",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ JSON.stringify($json) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos parte del equipo de IT y Producto de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio: turnos online, página web, chatbot de WhatsApp o Instagram, e inventario y caja.\n\nUn comercio firmó con Scaling. Armás el plan de implementación: todo lo que pasa desde la firma hasta que la solución anda y el dueño la usa solo.\n\nTe van a pasar el cliente, la oferta, lo que acordó con Lucho (alcance, plazos, precio) y la revisión de seguridad de esa oferta, si existe. Armá:\n\n1. Tareas en orden, de punta a punta: preparar, configurar, cargar los datos, probar, capacitar y entregar. Para cada una: quién la hace (Scaling o el comercio), horas estimadas y en qué te basás, y en qué día desde la firma se hace.\n2. Qué hay que pedirle al comercio y para cuándo: datos (servicios, duraciones, precios, horarios, empleados), accesos (WhatsApp Business, Instagram, dominio) y textos o fotos. Las contraseñas nunca se piden por chat: el comercio da el acceso en persona con Lucho o con un usuario propio para Scaling.\n3. Herramientas: qué servicio se usa para cada parte, con su costo y de dónde sale el dato. Si el CEO todavía no eligió la herramienta, poné \"a definir por el CEO\" y proponé una opción con su motivo.\n4. Pruebas antes de entregar: las de la revisión de seguridad y las de que funcione (por ejemplo, sacar y cancelar un turno, o que el chatbot no invente). Si no te pasan la revisión de seguridad, avisá que hay que hacerla antes de entregar.\n5. Capacitación al dueño: qué le enseñás y cuánto dura.\n6. Riesgos de la implementación (atrasos, que el comercio no mande los datos, depender de servicios de terceros) y cómo evitarlos.\n\nReglas:\n- Horas realistas para una sola persona, Lucho, con ayuda de Claude.\n- Respetá lo acordado. Si el plan no entra en los plazos o el alcance acordados, decilo.\n- No inventes costos ni datos. Si algo no se sabe, poné \"sin dato\".\n- Escribí en castellano rioplatense, simple y sin jerga.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"IT y Producto - Implementación\",\n  \"cliente\": \"<nombre>\",\n  \"oferta\": \"<cuál>\",\n  \"tareas\": [{\"orden\": 1, \"tarea\": \"<qué>\", \"quien\": \"<Scaling | comercio>\", \"horas\": <número>, \"dia_desde_la_firma\": <número>, \"en_que_me_baso\": \"<texto>\"}],\n  \"pedir_al_comercio\": [{\"que\": \"<qué>\", \"para_cuando\": \"<día desde la firma>\", \"como\": \"<texto>\"}],\n  \"herramientas\": [{\"para_que\": \"<qué>\", \"herramienta\": \"<cuál o a definir por el CEO>\", \"costo\": \"<monto y frecuencia, o sin dato>\", \"fuente\": \"<de dónde salió>\"}],\n  \"pruebas_antes_de_entregar\": [\"<prueba>\"],\n  \"capacitacion\": \"<texto>\",\n  \"riesgos\": [{\"riesgo\": \"<qué>\", \"como_evitarlo\": \"<texto>\"}],\n  \"horas_totales\": <número>,\n  \"entrega_dia_desde_la_firma\": <número>,\n  \"entra_en_lo_acordado\": <true o false>,\n  \"falta_antes_de_empezar\": [\"<texto>\"]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 8000
+        }
+      },
+      "id": "7f215d33-75a2-4345-9734-5009c2ccd77e",
+      "name": "IT y Producto - Implementación",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nconst cfg = $('Config').first().json;\nreturn [{ json: { fecha: hoy, cliente: cfg.cliente, oferta: r.oferta || cfg.oferta,\n  horas_totales: r.horas_totales, entrega_dia_desde_la_firma: r.entrega_dia_desde_la_firma,\n  tareas: celda((r.tareas || []).map(t => 'Día ' + t.dia_desde_la_firma + ': ' + t.tarea + ' (' + t.quien + ', ' + t.horas + ' h)').join('\\n')),\n  pedir_al_comercio: celda((r.pedir_al_comercio || []).map(p => p.que + ' (para el día ' + p.para_cuando + '): ' + p.como).join('\\n')),\n  pruebas_antes_de_entregar: celda((r.pruebas_antes_de_entregar || []).join('\\n')),\n  falta_antes_de_empezar: celda((r.falta_antes_de_empezar || []).join('\\n')),\n  detalle: celda(JSON.stringify(r)) } }];"
+      },
+      "id": "ad90b5c3-dc04-4a83-8560-fe9071ad4151",
+      "name": "Armar plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Implementaciones"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "3b2795aa-6bd4-4c6d-91d5-869b78611157",
+      "name": "Guardar plan",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1440,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Probar a mano": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Leer informes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer informes": {
+      "main": [
+        [
+          {
+            "node": "Buscar revisión de seguridad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar revisión de seguridad": {
+      "main": [
+        [
+          {
+            "node": "IT y Producto - Implementación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IT y Producto - Implementación": {
+      "main": [
+        [
+          {
+            "node": "Armar plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar plan": {
+      "main": [
+        [
+          {
+            "node": "Guardar plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

@@ -6,6 +6,7 @@ Qué mirar:
 - Zona: Villa Bosch, Ciudad Jardín y Martín Coronado tienen clientes con más poder de compra; las demás zonas puntúan menos.
 - Si tiene teléfono cargado, se le puede escribir; sin teléfono, el contacto es más difícil.
 - Si tiene web o Instagram, ya invierte en lo digital y es más fácil de convencer.
+- Si el comercio nos escribió por el chatbot (la fuente empieza con "Lead"), ya mostró interés y eso pesa mucho a favor. Leé sus notas.
 - No inventes datos. Si algo no está, poné "sin dato".
 
 Puntaje del 1 al 10: qué tan probable es que acepte y pague.

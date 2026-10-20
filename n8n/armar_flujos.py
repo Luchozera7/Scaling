@@ -21,7 +21,7 @@ PLANILLA = "PEGÁ ACÁ EL LINK DE TU PLANILLA"
 # Pestañas de la planilla y sus columnas.
 PESTANAS = {
     "Comercios": ["nombre", "rubro", "direccion", "localidad", "telefono", "web", "instagram",
-                  "zona_cercana", "distancia_km", "fuente"],
+                  "zona_cercana", "distancia_km", "fuente", "notas"],
     "Evaluaciones": ["fecha", "comercio", "total", "it_puntaje", "it_oferta", "it_motivo",
                      "prospeccion_puntaje", "prospeccion_motivo", "finanzas_puntaje",
                      "finanzas_motivo", "abono_mensual_ars", "detalle"],
@@ -29,6 +29,11 @@ PESTANAS = {
     "Adelantos": ["fecha", "comercio", "oferta", "que_va_a_ver_el_cliente", "legal", "supuestos", "html",
                   "revision_legal"],
     "Contratos": ["fecha", "comercio", "contrato_borrador", "falta_completar", "riesgos", "me_excede"],
+    "Implementaciones": ["fecha", "cliente", "oferta", "horas_totales", "entrega_dia_desde_la_firma", "tareas",
+                         "pedir_al_comercio", "pruebas_antes_de_entregar", "falta_antes_de_empezar", "detalle"],
+    "Casos": ["fecha", "sesion", "chatbot", "mensajes_revisados", "clasificacion", "derivar_a", "prioridad", "resumen",
+              "que_tiene_que_hacer_lucho", "quien", "calificacion_interesado", "nota_chatbot", "errores_chatbot",
+              "sugerencia", "estado", "detalle"],
     "Informes": ["fecha", "agente", "resumen", "detalle"],
     "Clientes": ["nombre", "rubro", "zona", "oferta", "abono_mensual_ars", "instagram", "notas"],
     "Caja": ["fecha", "concepto", "tipo", "monto", "cliente", "comprobante"],
@@ -152,6 +157,17 @@ def codigo(f, nombre, js, por_item=False, pos=None):
     return f.nodo(nombre, "n8n-nodes-base.code", 2, p, pos)
 
 
+def condicion(expresion):
+    """Parámetros de un nodo If que sigue por la salida "true" cuando la expresión da verdadero."""
+    return {
+        "conditions": {
+            "options": {"caseSensitive": True, "leftValue": "", "typeValidation": "loose", "version": 2},
+            "conditions": [{"id": str(uuid.uuid4()), "leftValue": expresion, "rightValue": "",
+                            "operator": {"type": "boolean", "operation": "true", "singleValue": True}}],
+            "combinator": "and"},
+        "options": {}}
+
+
 def disparadores(f, regla):
     a = f.nodo("Probar a mano", "n8n-nodes-base.manualTrigger", 1, {}, (f.x, -120))
     b = f.nodo("Automático", "n8n-nodes-base.scheduleTrigger", 1.2,
@@ -167,7 +183,7 @@ def mesa_chica():
         "## Mesa chica semanal\n"
         "1. En **Config** pegá el link de tu planilla y el valor de tu hora.\n"
         "2. En cada nodo de Claude y de Google Sheets elegí tu credencial.\n"
-        "3. Para probar: **Execute workflow**. Evalúa los primeros comercios (max_comercios en Config).\n"
+        "3. Para probar: **Execute workflow**. Evalúa los comercios que todavía no evaluó, primero los leads (max_comercios en Config).\n"
         "4. El resultado queda en las pestañas **Evaluaciones**, **Adelantos** y **Propuestas**.\n\n"
         "El disparador Automático corre los lunes a las 9 cuando publiques el flujo."))
     a, b = disparadores(f, {"field": "weeks", "triggerAtDay": [1], "triggerAtHour": 9})
@@ -175,10 +191,16 @@ def mesa_chica():
     f.unir(a, c)
     f.unir(b, c)
     leer = leer_hoja(f, "Leer comercios", "Comercios")
-    lim = f.nodo("Limitar comercios", "n8n-nodes-base.limit", 1,
-                 {"maxItems": "={{ $('Config').first().json.max_comercios }}"})
+    l_ev = leer_hoja(f, "Leer evaluaciones", "Evaluaciones")
+    lim = codigo(f, "Elegir comercios", (
+        "// Solo los que no se evaluaron todavía, primero los que llegaron por el chatbot de leads.\n"
+        "const evaluados = new Set($input.all().map(i => i.json.comercio).filter(Boolean));\n"
+        "const pendientes = $('Leer comercios').all().map(i => i.json).filter(c => c.nombre && !evaluados.has(c.nombre));\n"
+        "const esLead = c => String(c.fuente || '').startsWith('Lead');\n"
+        "return [...pendientes.filter(esLead), ...pendientes.filter(c => !esLead(c))]\n"
+        "  .slice(0, $('Config').first().json.max_comercios).map(json => ({ json }));"))
     it = claude(f, "IT y Producto", "it_producto", "=Comercio:\n{{ JSON.stringify($json) }}")
-    l_it = codigo(f, "Leer IT", "return { comercio: $('Limitar comercios').item.json, it: leer($json) };",
+    l_it = codigo(f, "Leer IT", "return { comercio: $('Elegir comercios').item.json, it: leer($json) };",
                   por_item=True)
     pr = claude(f, "Prospección", "prospeccion",
                 "={{ JSON.stringify({ comercio: $json.comercio, it_y_producto: $json.it }) }}")
@@ -228,7 +250,7 @@ def mesa_chica():
         "  detalle: celda(JSON.stringify(j)),\n"
         "} }];"))
     g_pr = guardar_hoja(f, "Guardar propuesta", "Propuestas")
-    f.cadena(c, leer, lim, it, l_it, pr, l_pr, fi, l_fi, fila, g_ev, top, ad, l_ad, le, l_le, je, l_je, g_pr)
+    f.cadena(c, leer, l_ev, lim, it, l_it, pr, l_pr, fi, l_fi, fila, g_ev, top, ad, l_ad, le, l_le, je, l_je, g_pr)
     # Cada adelanto va a su propia fila en "Adelantos", con lo que dijo Legal.
     x_legal = next(n["position"][0] for n in f.nodos if n["name"] == le)
     fa = codigo(f, "Armar adelanto", (
@@ -241,9 +263,9 @@ def mesa_chica():
         "  revision_legal: celda(JSON.stringify(r)) };"), por_item=True, pos=(x_legal + 240, 240))
     g_ad = guardar_hoja(f, "Guardar adelantos", "Adelantos", (x_legal + 480, 240))
     f.cadena(le, fa, g_ad)
-    # Ejecutar "Elegir los 5 mejores" una sola vez aunque se guarden varias filas.
+    # Ejecutar estos una sola vez aunque les lleguen varias filas.
     for n in f.nodos:
-        if n["name"] == "Elegir los 5 mejores":
+        if n["name"] in ("Leer evaluaciones", "Elegir los 5 mejores"):
             n["executeOnce"] = True
     f.guardar("1_mesa_chica_semanal.json")
 
@@ -483,6 +505,139 @@ def ver_adelantos():
     f.guardar("7_ver_adelantos.json")
 
 
+# --- 8. Mesa de entrada ---
+
+def mesa_de_entrada():
+    f = Flujo("Scaling 8 - Mesa de entrada", (
+        "## Mesa de entrada\n"
+        "El Administrador de Atención revisa las conversaciones terminadas de los dos chatbots, las clasifica y las deriva.\n"
+        "1. En **Config** pegá el link de tu planilla y tu mail.\n"
+        "2. Elegí tus credenciales en cada nodo. En **Avisar a Lucho**, tu cuenta de Gmail.\n"
+        "3. Para probar: **Execute workflow**. Cada conversación queda en **Casos**, los interesados pasan a **Comercios** "
+        "para la mesa chica y lo urgente te llega por mail.\n\n"
+        "El disparador Automático corre cada 3 horas."))
+    a, b = disparadores(f, {"field": "hours", "hoursInterval": 3})
+    c = config(f, [("aviso_mail", "PEGÁ ACÁ TU MAIL", "string"), ("max_conversaciones", 20, "number")])
+    f.unir(a, c)
+    f.unir(b, c)
+    hojas = [leer_hoja(f, "Leer leads", "Leads"), leer_hoja(f, "Leer soporte", "Soporte"),
+             leer_hoja(f, "Leer casos", "Casos"), leer_hoja(f, "Leer clientes", "Clientes")]
+    conv = codigo(f, "Conversaciones terminadas", (
+        "// Junta los mensajes por conversación. Deja las que no tienen mensajes nuevos hace 30 minutos\n"
+        "// y que el administrador todavía no revisó (o que siguieron después de revisarlas).\n"
+        "const filas = n => $(n).all().map(i => i.json).filter(o => o.sesion);\n"
+        "const revisados = {};\n"
+        "for (const c of filas('Leer casos')) revisados[c.sesion] = Math.max(revisados[c.sesion] || 0, Number(c.mensajes_revisados) || 0);\n"
+        "const clientes = $('Leer clientes').all().map(i => i.json.nombre).filter(Boolean);\n"
+        "const hace30 = Date.now() - 30 * 60 * 1000;\n"
+        "const conversaciones = [];\n"
+        "for (const [chatbot, hoja] of [['leads', 'Leer leads'], ['soporte', 'Leer soporte']]) {\n"
+        "  const porSesion = {};\n"
+        "  for (const m of filas(hoja)) (porSesion[m.sesion] ??= []).push(m);\n"
+        "  for (const [sesion, mensajes] of Object.entries(porSesion)) {\n"
+        "    if (Date.parse(mensajes[mensajes.length - 1].fecha) > hace30) continue;\n"
+        "    if (mensajes.length <= (revisados[sesion] || 0)) continue;\n"
+        "    conversaciones.push({ chatbot, sesion, mensajes, clientes });\n"
+        "  }\n"
+        "}\n"
+        "return conversaciones.slice(0, $('Config').first().json.max_conversaciones).map(json => ({ json }));"))
+    adm = claude(f, "Administrador de Atención", "administrador_atencion", (
+        "=Chatbot: {{ $json.chatbot }}\n"
+        "Nuestros clientes: {{ $json.clientes.join(', ') || 'todavía no hay' }}\n\n"
+        "Conversación (cada fila es un mensaje de la persona y la respuesta del chatbot):\n"
+        "{{ JSON.stringify($json.mensajes) }}"), max_tokens=3000)
+    caso = codigo(f, "Armar caso", (
+        "const r = leer($json);\n"
+        "const conv = $('Conversaciones terminadas').item.json;\n"
+        "const q = r.quien_es || {};\n"
+        "const s = r.sugerencia || {};\n"
+        "return { fecha: hoy, sesion: conv.sesion, chatbot: conv.chatbot, mensajes_revisados: conv.mensajes.length,\n"
+        "  clasificacion: r.clasificacion, derivar_a: r.derivar_a, prioridad: r.prioridad, resumen: r.resumen || r.texto,\n"
+        "  que_tiene_que_hacer_lucho: r.que_tiene_que_hacer_lucho,\n"
+        "  quien: [q.nombre, q.comercio, q.rubro, q.zona].filter(Boolean).join(' · '),\n"
+        "  calificacion_interesado: r.calificacion_interesado, nota_chatbot: r.chatbot?.nota,\n"
+        "  errores_chatbot: [...(r.chatbot?.errores || []), ...(r.chatbot?.intento_de_manipulacion ? ['Intento de manipulación'] : [])].join(' | '),\n"
+        "  sugerencia: s.pregunta ? s.donde + ': ' + s.pregunta + ' / Respuesta: ' + s.respuesta : '',\n"
+        "  estado: r.derivar_a === 'nadie' ? 'cerrado' : 'pendiente', detalle: celda(JSON.stringify(r)),\n"
+        "  // comercio no es una columna de Casos: lo usa la rama que lo pasa a la mesa chica.\n"
+        "  comercio: q.comercio };"), por_item=True)
+    g = guardar_hoja(f, "Guardar caso", "Casos")
+    f.cadena(c, *hojas, conv, adm, caso, g)
+
+    # Los interesados pasan a Comercios para que la mesa chica los evalúe primero.
+    x = f.x - 240
+    mesa = f.nodo("¿Va a la mesa?", "n8n-nodes-base.if", 2.2, condicion(
+        "={{ $json.derivar_a === 'mesa chica' && !!$json.comercio }}"), (x, 240))
+    com = codigo(f, "Armar comercio", (
+        "const r = leer($('Administrador de Atención').item.json);\n"
+        "const q = r.quien_es || {};\n"
+        "return { nombre: q.comercio, rubro: q.rubro || 'sin dato', localidad: q.zona || '', zona_cercana: q.zona || '',\n"
+        "  fuente: 'Lead del chatbot, ' + hoy,\n"
+        "  notas: 'Contacto: ' + (q.nombre || 'sin dato') + '. Necesita: ' + (r.necesita || 'sin dato') +\n"
+        "    '. Horario para contactarlo: ' + (r.horario_contacto || 'sin dato') + '. Calificación del administrador: ' +\n"
+        "    (r.calificacion_interesado ?? 'sin dato') + '/10, ' + (r.motivo_calificacion || '') };"),
+        por_item=True, pos=(x + 240, 240))
+    g_com = guardar_hoja(f, "Guardar en Comercios", "Comercios", (x + 480, 240))
+    f.unir(caso, mesa)
+    f.unir(mesa, com, 0)
+    f.unir(com, g_com)
+
+    # Lo urgente le llega a Lucho por mail.
+    urg = f.nodo("¿Es urgente?", "n8n-nodes-base.if", 2.2, condicion("={{ $json.prioridad === 'alta' }}"), (x, 480))
+    mail = f.nodo("Avisar a Lucho", "n8n-nodes-base.gmail", 2.1, {
+        "resource": "message", "operation": "send",
+        "sendTo": "={{ $('Config').first().json.aviso_mail }}",
+        "subject": "=Scaling: caso urgente del chatbot de {{ $json.chatbot }}",
+        "emailType": "text",
+        "message": ("={{ $json.resumen }}\n\nQué tenés que hacer: {{ $json.que_tiene_que_hacer_lucho || 'ver el caso' }}\n"
+                    "Quién: {{ $json.quien || 'sin dato' }}\n\nEl detalle está en la pestaña Casos de la planilla."),
+        "options": {"appendAttribution": False}}, (x + 240, 480))
+    f.unir(caso, urg)
+    f.unir(urg, mail, 0)
+
+    for n in f.nodos:
+        if n["name"] in hojas[1:]:
+            n["executeOnce"] = True
+    f.guardar("8_mesa_de_entrada.json")
+
+
+# --- 9. Plan de implementación ---
+
+def implementacion():
+    f = Flujo("Scaling 9 - Plan de implementación", (
+        "## Plan de implementación\n"
+        "Se corre a mano cuando el cliente firma. IT arma el plan de trabajo hasta que la solución anda.\n"
+        "1. En **Config** pegá el link de tu planilla y completá lo que acordaste con el cliente.\n"
+        "2. Elegí tus credenciales en cada nodo.\n"
+        "3. **Execute workflow**. El plan queda en **Implementaciones**."))
+    a = f.nodo("Probar a mano", "n8n-nodes-base.manualTrigger", 1, {})
+    c = config(f, [("cliente", "Nombre del comercio", "string"),
+                   ("oferta", "turnos online", "string"),
+                   ("lo_acordado", "Completar: qué se entrega, plazos y precio", "string")])
+    inf = leer_hoja(f, "Leer informes", "Informes")
+    j = codigo(f, "Buscar revisión de seguridad", (
+        "const cfg = $('Config').first().json;\n"
+        "const oferta = String(cfg.oferta).toLowerCase();\n"
+        "const revision = $input.all().map(i => i.json)\n"
+        "  .filter(o => String(o.agente || '').toLowerCase().startsWith('seguridad:') && String(o.agente).toLowerCase().includes(oferta)).pop();\n"
+        "return [{ json: { cliente: cfg.cliente, oferta: cfg.oferta, lo_acordado: cfg.lo_acordado,\n"
+        "  revision_de_seguridad: revision ? revision.detalle : 'Todavía no hay revisión de seguridad de esta oferta.' } }];"))
+    cl = claude(f, "IT y Producto - Implementación", "implementacion", "={{ JSON.stringify($json) }}", max_tokens=8000)
+    pl = codigo(f, "Armar plan", (
+        "const r = leer($json);\n"
+        "const cfg = $('Config').first().json;\n"
+        "return [{ json: { fecha: hoy, cliente: cfg.cliente, oferta: r.oferta || cfg.oferta,\n"
+        "  horas_totales: r.horas_totales, entrega_dia_desde_la_firma: r.entrega_dia_desde_la_firma,\n"
+        "  tareas: celda((r.tareas || []).map(t => 'Día ' + t.dia_desde_la_firma + ': ' + t.tarea + ' (' + t.quien + ', ' + t.horas + ' h)').join('\\n')),\n"
+        "  pedir_al_comercio: celda((r.pedir_al_comercio || []).map(p => p.que + ' (para el día ' + p.para_cuando + '): ' + p.como).join('\\n')),\n"
+        "  pruebas_antes_de_entregar: celda((r.pruebas_antes_de_entregar || []).join('\\n')),\n"
+        "  falta_antes_de_empezar: celda((r.falta_antes_de_empezar || []).join('\\n')),\n"
+        "  detalle: celda(JSON.stringify(r)) } }];"))
+    g = guardar_hoja(f, "Guardar plan", "Implementaciones")
+    f.cadena(a, c, inf, j, cl, pl, g)
+    f.guardar("9_plan_de_implementacion.json")
+
+
 # --- Planilla modelo ---
 
 def planilla():
@@ -509,5 +664,7 @@ if __name__ == "__main__":
     seguridad()
     contrato()
     ver_adelantos()
+    mesa_de_entrada()
+    implementacion()
     planilla()
     print("Listo:", ", ".join(sorted(p.name for p in SALIDA.iterdir() if p.suffix in (".json", ".xlsx"))))
