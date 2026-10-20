@@ -15,7 +15,11 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+# Si el servidor principal falla, se prueba el de respaldo.
+SERVIDORES = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
 # Centros aproximados de las zonas objetivo.
 ZONAS = {
     "Villa Bosch": (-34.5886, -58.5786),
@@ -28,7 +32,7 @@ SALIDA = Path(__file__).parent / "comercios.csv"
 # Todo el partido de Tres de Febrero. En OpenStreetMap las barberías suelen
 # figurar como shop=hairdresser, y la estética como shop=beauty.
 CONSULTA = """
-[out:json][timeout:60];
+[out:json][timeout:150];
 area["name"~"Tres de Febrero"]["boundary"="administrative"]["admin_level"="5"]->.zona;
 nwr["shop"~"^(hairdresser|beauty|barber|cosmetics)$"](area.zona);
 out center tags;
@@ -75,10 +79,17 @@ def a_fila(elemento):
 
 def main():
     datos = urllib.parse.urlencode({"data": CONSULTA}).encode()
-    pedido = urllib.request.Request(OVERPASS_URL, data=datos,
-                                    headers={"User-Agent": "Scaling-buscador/1.0"})
-    with urllib.request.urlopen(pedido, timeout=90) as r:
-        elementos = json.load(r)["elements"]
+    for url in SERVIDORES:
+        pedido = urllib.request.Request(url, data=datos,
+                                        headers={"User-Agent": "Scaling-buscador/1.0"})
+        try:
+            with urllib.request.urlopen(pedido, timeout=180) as r:
+                elementos = json.load(r)["elements"]
+            break
+        except OSError as e:
+            print(f"{url} no respondió ({e}), pruebo el siguiente.")
+    else:
+        sys.exit("Ningún servidor de OpenStreetMap respondió. Probá de nuevo más tarde.")
 
     filas = [a_fila(e) for e in elementos if e.get("tags", {}).get("name")]
     filas.sort(key=lambda f: f["distancia_km"])
