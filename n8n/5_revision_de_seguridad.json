@@ -1,0 +1,196 @@
+{
+  "name": "Scaling 5 - Revisión de seguridad por oferta",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Revisión de seguridad\nSe corre una vez por tipo de oferta, a mano.\n1. En **Config** pegá el link de tu planilla.\n2. En **Oferta a revisar** escribí la oferta y cómo la armamos.\n3. **Execute workflow**. El resultado queda en **Informes**.",
+        "width": 400,
+        "height": 240
+      },
+      "id": "1cc9b567-f23f-43e5-a746-e69580085464",
+      "name": "Nota 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "5cfa4b18-e8cc-484b-b39e-c0427790a7f4",
+      "name": "Probar a mano",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "abdad126-9f1c-4955-85ec-8a6b22ffe68f",
+              "name": "planilla",
+              "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
+              "type": "string"
+            },
+            {
+              "id": "876617c3-4446-428f-a7de-c2a6758ecf78",
+              "name": "oferta",
+              "value": "turnos online",
+              "type": "string"
+            },
+            {
+              "id": "5d0ebdc8-212b-4e98-831f-36b9a2e4d30c",
+              "name": "como_la_armamos",
+              "value": "Completar: qué herramienta usamos, dónde se guardan los datos y quién accede.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "85999a0b-7599-4f36-8268-423d7904a007",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Oferta: {{ $json.oferta }}\nCómo la armamos: {{ $json.como_la_armamos }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el gerente de IT y Producto de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio. Ahora hacés la revisión de seguridad de una de nuestras ofertas, no de un comercio. Se hace una vez por tipo de oferta y se repite solo si la oferta cambia.\n\nTe van a pasar la oferta (turnos online, web, chatbot de WhatsApp o Instagram, o inventario y caja) y cómo la armamos: herramientas, dónde se guardan los datos y quién accede.\n\nRevisá y listá cómo se cubre cada punto que aplique a esta oferta:\n- Fuga de instrucciones (prompts): un cliente del comercio no tiene que poder hacerle decir al chatbot sus instrucciones internas, datos de otros clientes ni nada fuera de su tarea.\n- Manipulación del chatbot: mensajes que intentan cambiarle el rol, hacerle prometer precios o turnos que no existen, o sacarlo de tema.\n- Datos personales de los clientes del comercio (nombres, teléfonos, turnos): dónde se guardan, quién accede y cuánto tiempo se conservan.\n- Claves y accesos: ninguna clave en el código ni en mensajes; cada comercio con sus propias cuentas y permisos mínimos.\n- Si un servicio de terceros se cae (WhatsApp, Meta, Google, Claude): qué ve el cliente final y cómo se avisa.\n- Precisión: el chatbot solo responde con datos que el comercio cargó (horarios, precios, servicios). Si no sabe, deriva a una persona.\n- Pruebas antes de entregar: qué hay que probar, incluidos intentos de manipulación.\n\nSi un riesgo no se puede cubrir con lo que ofrecemos, decilo: es mejor no vender algo que vender algo inseguro.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"IT y Producto - Seguridad\",\n  \"oferta\": \"<cuál>\",\n  \"seguridad\": [{\"riesgo\": \"<qué>\", \"como_se_cubre\": \"<texto>\", \"cubierto\": <true o false>}],\n  \"pruebas_antes_de_entregar\": [\"<prueba>\", \"...\"],\n  \"se_puede_vender\": <true o false>,\n  \"motivo\": \"<una o dos oraciones>\"\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 4000
+        }
+      },
+      "id": "5d3f5f3a-b091-4b3d-b51d-0716305d960a",
+      "name": "Seguridad",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, agente: 'Seguridad: ' + (r.oferta || ''), resumen: (r.se_puede_vender ? 'Se puede vender. ' : 'No se puede vender todavía. ') + (r.motivo || r.texto || ''), detalle: celda(JSON.stringify(r)) } }];"
+      },
+      "id": "20220dfe-5749-4ccb-875e-98e1680333d2",
+      "name": "Armar informe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Informes"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "840d1239-b84e-4f20-9c3f-cdaf44de614d",
+      "name": "Guardar informe",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Probar a mano": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Seguridad",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Seguridad": {
+      "main": [
+        [
+          {
+            "node": "Armar informe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar informe": {
+      "main": [
+        [
+          {
+            "node": "Guardar informe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

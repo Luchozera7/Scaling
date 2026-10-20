@@ -1,0 +1,810 @@
+{
+  "name": "Scaling 2 - Informes del mes",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Informes del mes\nContador, Posventa y Marketing. Cada uno lee su pestaña y deja su informe en **Informes**.\n1. En **Config** pegá el link de tu planilla.\n2. Elegí tus credenciales en cada nodo.\n3. Para probar: **Execute workflow**.\n\nEl disparador Automático corre el día 1 de cada mes a las 9.",
+        "width": 400,
+        "height": 240
+      },
+      "id": "b5240041-9246-42f0-8f77-62f492a2d471",
+      "name": "Nota 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "bb9b11a5-44c1-4367-a220-3077725f17b6",
+      "name": "Probar a mano",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtDayOfMonth": 1,
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "29018e84-6687-4b23-be94-016a887c3abc",
+      "name": "Automático",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bb730ab4-2e1a-48ff-a7b1-fe4528cc719c",
+              "name": "planilla",
+              "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9e01ffdc-663e-41e2-8275-253cb7bed24b",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Caja"
+        },
+        "options": {}
+      },
+      "id": "6ec75bfc-7e78-4061-8c58-e4b48dc8f2a4",
+      "name": "Leer caja",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        -300
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clientes"
+        },
+        "options": {}
+      },
+      "id": "ab34f810-3436-4621-a886-1ea69a5019f3",
+      "name": "Leer clientes (Contador)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        -300
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst sinVacios = n => $(n).all().map(i => i.json).filter(o => Object.keys(o).length);\nreturn [{ json: { mes: hoy.slice(0, 7), movimientos: sinVacios('Leer caja'), clientes: sinVacios('Leer clientes (Contador)') } }];"
+      },
+      "id": "00a62d00-fbbf-4cd8-a0f8-72a9ad55c54a",
+      "name": "Juntar caja",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ JSON.stringify($json) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el Contador de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio. Trabajás para el gerente de Finanzas y le llevás las cuentas a la empresa.\n\nTe van a pasar los movimientos de la pestaña \"Caja\" de la planilla. Cada movimiento tiene: fecha, concepto, tipo (ingreso o gasto), monto en pesos, cliente (si corresponde) y comprobante. También te pasan la lista de clientes con su abono mensual.\n\nUna vez por mes armás el resumen:\n1. Ingresos, gastos y ganancia del mes, y comparación con el mes anterior.\n2. Ingresos por cliente y abonos que no se cobraron todavía (quién debe y desde cuándo).\n3. Gastos fijos (herramientas, servicios, la API de Claude) y cuáles subieron respecto del mes anterior.\n4. Plata disponible y para cuántos meses de gastos fijos alcanza.\n5. Alertas: cualquier cosa que pueda generar una pérdida (un cliente que no paga, un gasto que se dispara, un abono que quedó atrasado frente a la inflación).\n\nReglas:\n- Usá solo los movimientos que te pasan. No completes ni estimes montos que no están. Si falta un comprobante, marcalo.\n- Si algo es de impuestos, facturación o inscripción fiscal, no lo resuelvas: decí que hay que consultarlo con un contador matriculado y por qué.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Contador\",\n  \"mes\": \"<AAAA-MM>\",\n  \"ingresos_ars\": <número>,\n  \"gastos_ars\": <número>,\n  \"ganancia_ars\": <número>,\n  \"vs_mes_anterior\": \"<texto corto>\",\n  \"por_cliente\": [{\"cliente\": \"<nombre>\", \"abono_ars\": <número>, \"cobrado_ars\": <número>, \"debe_ars\": <número>, \"debe_desde\": \"<fecha o null>\"}],\n  \"gastos_fijos\": [{\"concepto\": \"<qué>\", \"monto_ars\": <número>, \"subio\": <true o false>}],\n  \"disponible_ars\": <número>,\n  \"meses_cubiertos\": <número>,\n  \"alertas\": [\"<texto>\", \"...\"],\n  \"consultar_a_un_profesional\": [{\"tema\": \"<qué>\", \"por_que\": \"<texto>\"}],\n  \"sin_comprobante\": [\"<movimiento>\", \"...\"]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 4000
+        }
+      },
+      "id": "0c85ed2f-e063-4c22-a7d0-82d10d1bc178",
+      "name": "Contador",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, agente: 'Contador', resumen: r.alertas ? r.alertas.join(' | ') : (r.texto || ''), detalle: celda(JSON.stringify(r)) } }];"
+      },
+      "id": "4fb7afed-07ec-46e9-9865-4be1824aec3a",
+      "name": "Informe Contador",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Informes"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "9fb23a1b-20b8-4534-afe9-7b3fc337af33",
+      "name": "Guardar informe Contador",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1680,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Soporte"
+        },
+        "options": {}
+      },
+      "id": "f6ec72d6-0972-4fcc-ab99-1eb44d1b7d33",
+      "name": "Leer soporte",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        0
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clientes"
+        },
+        "options": {}
+      },
+      "id": "c6cd7882-7d9d-4215-b1a5-b6d54fff019b",
+      "name": "Leer clientes (Posventa)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        0
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst sinVacios = n => $(n).all().map(i => i.json).filter(o => Object.keys(o).length);\nreturn [{ json: { mes: hoy.slice(0, 7), casos: sinVacios('Leer soporte'), clientes: sinVacios('Leer clientes (Posventa)') } }];"
+      },
+      "id": "a8d9d600-9db7-4a8a-99e0-6fc58114feb0",
+      "name": "Juntar soporte",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ JSON.stringify($json) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el responsable de Posventa de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio. Tu trabajo es que los clientes que ya pagan el abono sigan contentos y no se vayan.\n\nUna vez por mes te pasan, para cada cliente: su oferta y abono, los casos de la pestaña \"Soporte\" del mes (qué pasó, si lo resolvió el chatbot o Lucho, cuánto tardó) y lo que haya anotado Lucho de cada cliente.\n\nPara cada cliente:\n1. Cómo anda el sistema: problemas del mes, cuáles se repiten y si alguno quedó sin resolver.\n2. Cómo está el cliente: señales de que está contento o de que se puede ir (quejas, reclamos repetidos, pagos atrasados, que dejó de usar el sistema).\n3. Qué hacer: una acción concreta para Lucho si hace falta (llamarlo, arreglar algo, ofrecerle una mejora que le sirva).\n\nPara todos juntos:\n- Preguntas que el chatbot no supo responder y se repiten: proponé que entren al FAQ, con la respuesta que dio Lucho.\n- Problemas que aparecen en varios clientes: avisalo, porque puede ser una falla de lo que vendemos.\n\nUsá solo lo que te pasan. No inventes. Si un cliente no tuvo casos, decilo y no le busques problemas.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Posventa\",\n  \"mes\": \"<AAAA-MM>\",\n  \"clientes\": [\n    {\n      \"cliente\": \"<nombre>\",\n      \"estado\": \"<contento | en riesgo | sin datos>\",\n      \"problemas_del_mes\": [\"<texto>\"],\n      \"sin_resolver\": [\"<texto>\"],\n      \"senales\": [\"<texto>\"],\n      \"accion_para_lucho\": \"<texto o null>\"\n    }\n  ],\n  \"sumar_al_faq\": [{\"pregunta\": \"<texto>\", \"respuesta\": \"<la que dio Lucho>\", \"veces\": <número>}],\n  \"fallas_repetidas\": [{\"problema\": \"<texto>\", \"clientes\": [\"<nombre>\"]}]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 4000
+        }
+      },
+      "id": "2c092b4d-4504-48bc-86c5-a94646be94bf",
+      "name": "Posventa",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, agente: 'Posventa', resumen: (r.clientes || []).map(c => c.cliente + ': ' + c.estado).join(' | ') || (r.texto || ''), detalle: celda(JSON.stringify(r)) } }];"
+      },
+      "id": "902d0dac-cae3-4a63-9dd5-d902a3d8d3b6",
+      "name": "Informe Posventa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Informes"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "5b044088-08c4-49e1-a47d-271bf7dfe24a",
+      "name": "Guardar informe Posventa",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Clientes"
+        },
+        "options": {}
+      },
+      "id": "31e6e81f-aac5-452e-ab91-321fb15ea87b",
+      "name": "Leer clientes (Marketing)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        300
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst c = $input.all().map(i => i.json).filter(o => o.nombre);\nreturn c.length ? c.map(json => ({ json })) : [{ json: { sin_clientes: true } }];"
+      },
+      "id": "2c36c5c6-f961-475e-a206-0fd115b39f37",
+      "name": "Clientes reales",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "91dc3c48-c533-4b9e-a261-0637fcc65e88",
+              "leftValue": "={{ $json.sin_clientes === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "f245c8eb-4304-4563-942e-e689237965bb",
+      "name": "¿Hay clientes?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ JSON.stringify($json) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el responsable de Marketing para Clientes de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio. Trabajás bajo la gerente de Marketing, que revisa y aprueba todo lo que hacés antes de que llegue a Lucho o al comercio.\n\nTe van a pasar los datos de un comercio que ya es cliente: rubro, zona, qué sistema le vendimos, sus redes si las tiene y lo que haya anotado Lucho o Posventa. Tu trabajo es proponer cómo mejorar su marketing para que le entren más clientes.\n\nQué podés proponer:\n- Publicaciones para Instagram o estados de WhatsApp: texto e idea de imagen.\n- Promociones simples (por ejemplo, para días con pocos turnos), sin prometer descuentos que el comercio no aprobó.\n- Mejoras en cómo presenta sus servicios, precios y horarios.\n- Cómo aprovechar el sistema que tiene (por ejemplo, el link de turnos en la bio de Instagram).\n\nReglas:\n- Usá solo los datos del comercio que te pasan. Si falta algo (precios, horarios, fotos), pedilo en vez de inventarlo.\n- Nada de envíos masivos ni compra de seguidores.\n- Todo es un borrador para que lo apruebe la gerente de Marketing.\n\nEscribí en castellano rioplatense, simple y sin jerga.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Marketing para Clientes\",\n  \"cliente\": \"<nombre>\",\n  \"propuestas\": [{\"tipo\": \"<publicación | promoción | mejora | uso del sistema>\", \"que\": \"<descripción>\", \"texto\": \"<texto listo o null>\", \"imagen_o_video\": \"<idea o null>\", \"por_que_le_sirve\": \"<texto>\"}],\n  \"datos_que_faltan\": [\"<qué hay que pedirle al comercio>\"]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 4000
+        }
+      },
+      "id": "dac217cd-9175-44b7-8409-f6f4f1cb0dda",
+      "name": "Marketing para Clientes",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nlet propuestas = [];\ntry { propuestas = $('Marketing para Clientes').all().map(i => leer(i.json)); } catch (e) {}\nreturn [{ json: { mes: hoy.slice(0, 7), propuestas_de_marketing_para_clientes: propuestas,\n  resultados_de_clientes: 'Todavía no hay resultados cargados.' } }];"
+      },
+      "id": "beb67984-c1c9-4753-8277-d844520e2a5a",
+      "name": "Juntar para la gerente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ JSON.stringify($json) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos la gerente de Marketing de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio: turnos online, página web, chatbot de WhatsApp o Instagram, e inventario y caja. Le reportás al Jefe de Gabinete y al CEO, Lucho.\n\nTenés dos tareas.\n\n1. El marketing de Scaling (tu tarea principal). Mostrar qué hacemos para conseguir clientes nuevos:\n- Proponé contenido para las redes y el WhatsApp de Scaling: qué mostrar, el texto y la idea de imagen o video.\n- Armá materiales para que Lucho presente la empresa en persona: qué problema resolvemos, ejemplos concretos y casos de clientes.\n- Usá solo resultados reales de clientes (los que te pasen, con su fuente). Si todavía no hay, mostrá cómo funciona el sistema con un ejemplo y aclarás que es un ejemplo.\n- Nada de envíos masivos: el contenido se publica en nuestras redes y el contacto uno a uno lo hace Lucho.\n\n2. Supervisar a Marketing para Clientes. Te va a pasar propuestas de marketing para los comercios que ya son clientes. Para cada una:\n- Aprobala si es correcta, útil para ese comercio y cumple las reglas.\n- Si no, devolvela con lo que hay que corregir.\n- Rechazá cualquier promesa que no podamos cumplir, datos inventados o algo que pueda traerle un problema legal al comercio o a Scaling.\n\nEscribí en castellano rioplatense, simple y sin jerga.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Marketing\",\n  \"contenido_scaling\": [{\"canal\": \"<Instagram | WhatsApp | presentación>\", \"idea\": \"<qué mostrar>\", \"texto\": \"<el texto>\", \"imagen_o_video\": \"<idea>\", \"fuentes\": [\"<de dónde salen los datos>\"]}],\n  \"revisiones\": [{\"cliente\": \"<nombre>\", \"propuesta\": \"<cuál>\", \"decision\": \"<aprobada | corregir | rechazada>\", \"comentario\": \"<qué y por qué>\"}]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 8000
+        }
+      },
+      "id": "8a219ca1-cda3-4240-b1f7-ae9659bad1d6",
+      "name": "Gerente de Marketing",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, agente: 'Marketing', resumen: (r.contenido_scaling || []).map(c => c.idea).join(' | ') || (r.texto || ''), detalle: celda(JSON.stringify(r)) } }];"
+      },
+      "id": "fe586de8-8e0f-47c0-b899-06b70158c3cf",
+      "name": "Informe Marketing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Informes"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "a652599c-4225-4aa8-abaf-88651f81263a",
+      "name": "Guardar informe Marketing",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2160,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Probar a mano": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automático": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Leer caja",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Leer soporte",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Leer clientes (Marketing)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer caja": {
+      "main": [
+        [
+          {
+            "node": "Leer clientes (Contador)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer clientes (Contador)": {
+      "main": [
+        [
+          {
+            "node": "Juntar caja",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar caja": {
+      "main": [
+        [
+          {
+            "node": "Contador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contador": {
+      "main": [
+        [
+          {
+            "node": "Informe Contador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Informe Contador": {
+      "main": [
+        [
+          {
+            "node": "Guardar informe Contador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer soporte": {
+      "main": [
+        [
+          {
+            "node": "Leer clientes (Posventa)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer clientes (Posventa)": {
+      "main": [
+        [
+          {
+            "node": "Juntar soporte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar soporte": {
+      "main": [
+        [
+          {
+            "node": "Posventa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Posventa": {
+      "main": [
+        [
+          {
+            "node": "Informe Posventa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Informe Posventa": {
+      "main": [
+        [
+          {
+            "node": "Guardar informe Posventa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer clientes (Marketing)": {
+      "main": [
+        [
+          {
+            "node": "Clientes reales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clientes reales": {
+      "main": [
+        [
+          {
+            "node": "¿Hay clientes?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay clientes?": {
+      "main": [
+        [
+          {
+            "node": "Marketing para Clientes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Juntar para la gerente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marketing para Clientes": {
+      "main": [
+        [
+          {
+            "node": "Juntar para la gerente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar para la gerente": {
+      "main": [
+        [
+          {
+            "node": "Gerente de Marketing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerente de Marketing": {
+      "main": [
+        [
+          {
+            "node": "Informe Marketing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Informe Marketing": {
+      "main": [
+        [
+          {
+            "node": "Guardar informe Marketing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

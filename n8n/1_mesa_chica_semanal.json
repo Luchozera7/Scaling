@@ -1,0 +1,724 @@
+{
+  "name": "Scaling 1 - Mesa chica semanal",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Mesa chica semanal\n1. En **Config** pegá el link de tu planilla y el valor de tu hora.\n2. En cada nodo de Claude y de Google Sheets elegí tu credencial.\n3. Para probar: **Execute workflow**. Evalúa los primeros comercios (max_comercios en Config).\n4. El resultado queda en las pestañas **Evaluaciones**, **Contratos** y **Propuestas**.\n\nEl disparador Automático corre los lunes a las 9 cuando publiques el flujo.",
+        "width": 400,
+        "height": 240
+      },
+      "id": "d97587c2-7e04-4e7d-8b30-6e473074005a",
+      "name": "Nota 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1ae59b06-7a7c-4223-b4d1-13200fd62c73",
+      "name": "Probar a mano",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "a4c74065-6f24-4c98-b3c2-032d90433fce",
+      "name": "Automático",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ffec8225-d4fd-408e-aecf-7b341e3654a6",
+              "name": "planilla",
+              "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
+              "type": "string"
+            },
+            {
+              "id": "8d57adb2-8bc6-465b-b92c-4b543b5fc4fb",
+              "name": "max_comercios",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "76a6f4ef-3704-4b49-b5b1-18deccc9d275",
+              "name": "valor_hora_ars",
+              "value": "sin definir",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "155ad31d-f54d-4007-8bcf-4ea07d6746ba",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Comercios"
+        },
+        "options": {}
+      },
+      "id": "0ea9dec3-14d4-4c99-88ef-dd9cbd6c4c8a",
+      "name": "Leer comercios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        0
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "maxItems": "={{ $('Config').first().json.max_comercios }}"
+      },
+      "id": "e6ad7720-7a59-4680-be78-ceaba3eafdee",
+      "name": "Limitar comercios",
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Comercio:\n{{ JSON.stringify($json) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el gerente de IT y Producto de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio: turnos online, página web, chatbot de WhatsApp o Instagram, e inventario y caja.\n\nTe van a pasar los datos de un comercio sacados de OpenStreetMap: nombre, rubro, dirección, teléfono, web, Instagram, zona y distancia. Tu trabajo es decir qué le falta y qué le ofreceríamos primero. La seguridad de cada oferta la revisás aparte, una sola vez por tipo de oferta (ver seguridad.md).\n\nCómo decidir la oferta:\n- Para peluquerías, barberías y estética, lo primero que suele faltar son los turnos online y responder WhatsApp fuera de horario.\n- Si no tiene web ni Instagram cargados, decí que no figuran en OpenStreetMap, no que no existan. Puede que los tengan y el mapa no los muestre.\n- Elegí una sola oferta principal, la que más rápido le resuelva un problema concreto.\n- No inventes datos. Si algo no está, no lo listes como faltante: solo poné en \"que_le_falta\" cosas que sabés que le faltan, como mucho 3.\n- Sé breve: el motivo en una o dos oraciones.\n\nPuntaje del 1 al 10: qué tan claro es que nuestra oferta le sirve, con los datos que hay. Con pocos datos, el puntaje es bajo aunque la oferta tenga sentido.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"IT y Producto\",\n  \"comercio\": \"<nombre>\",\n  \"puntaje\": <1 a 10>,\n  \"motivo\": \"<una o dos oraciones>\",\n  \"oferta\": \"<turnos online | web | chatbot WhatsApp/Instagram | inventario y caja>\",\n  \"que_le_falta\": [\"<como mucho 3>\"],\n  \"datos\": [{\"dato\": \"<qué usaste>\", \"fuente\": \"<de dónde salió>\"}]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 4000
+        }
+      },
+      "id": "c27966c8-bc38-4fde-ba42-933493f63619",
+      "name": "IT y Producto",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        960,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn { comercio: $('Limitar comercios').item.json, it: leer($json) };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "1ad30a62-746d-4629-821a-5243bcaf0793",
+      "name": "Leer IT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ JSON.stringify({ comercio: $json.comercio, it_y_producto: $json.it }) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el responsable de Prospección de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio.\n\nTe van a pasar los datos de un comercio (de OpenStreetMap) y la evaluación de IT y Producto. Tu trabajo es decir qué tan buen cliente sería.\n\nQué mirar:\n- Zona: Villa Bosch, Ciudad Jardín y Martín Coronado tienen clientes con más poder de compra; las demás zonas puntúan menos.\n- Si tiene teléfono cargado, se le puede escribir; sin teléfono, el contacto es más difícil.\n- Si tiene web o Instagram, ya invierte en lo digital y es más fácil de convencer.\n- No inventes datos. Si algo no está, poné \"sin dato\".\n\nPuntaje del 1 al 10: qué tan probable es que acepte y pague.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Prospección\",\n  \"comercio\": \"<nombre>\",\n  \"puntaje\": <1 a 10>,\n  \"motivo\": \"<una o dos oraciones>\",\n  \"como_contactarlo\": \"<WhatsApp al número cargado | pasar por el local | sin forma de contacto>\",\n  \"datos\": [{\"dato\": \"<qué usaste>\", \"fuente\": \"<de dónde salió>\"}]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 4000
+        }
+      },
+      "id": "5a971846-47ba-48f5-b4a1-79b88cf8af35",
+      "name": "Prospección",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn { ...$('Leer IT').item.json, prospeccion: leer($json) };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "65062097-4b91-4102-855f-b7ee69063e7e",
+      "name": "Leer Prospección",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Valor de la hora de trabajo (definido por el CEO): {{ $('Config').first().json.valor_hora_ars }}\nResumen del Contador: todavía no hay.\n\n{{ JSON.stringify({ comercio: $json.comercio, it_y_producto: $json.it, prospeccion: $json.prospeccion }) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el gerente de Finanzas de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio: turnos online, página web, chatbot de WhatsApp o Instagram, e inventario y caja.\n\nTe van a pasar los datos de un comercio, lo que dijeron IT y Producto y Prospección, y el último resumen del Contador con el estado de las cuentas de Scaling. Tu trabajo es armar el presupuesto de la oferta, proyectar si el negocio le conviene a Scaling y cuidar nuestras finanzas: si sumar este cliente nos complica la caja (por ejemplo, muchas horas de instalación sin cobro adelantado, o gastos fijos que crecen más que el abono), decilo.\n\nDatos fijos de Scaling (fuente: definido por el CEO):\n- Abono mensual objetivo: entre 400.000 y 500.000 pesos.\n- Valor de la hora de trabajo: <a definir por el CEO>.\n\nCómo armar el presupuesto:\n1. Desarmá la oferta en etapas: desarrollo, implementación en el comercio, capacitación al dueño y mantenimiento mensual.\n2. Para cada etapa estimá las horas y explicá en qué te basás.\n3. Sumá los costos de herramientas y servicios que haga falta pagar (hosting, WhatsApp, Claude, etc.), con su fuente. Si no sabés un costo con fuente, poné \"sin dato\" en vez de inventarlo.\n4. Calculá: precio de instalación (pago único), abono mensual y el margen que le queda a Scaling por mes.\n5. Proyectá a 3, 6 y 12 meses: cuánto cobra Scaling, cuánto gasta y cuánto gana con este cliente.\n\nSi el resumen del Contador no está, avisalo y presupuestá igual.\n\nSi las cuentas no cierran con el abono objetivo, decilo y proponé un ajuste (otra oferta, otro precio, otra etapa). No vetás comercios: informás para que decida el CEO.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Finanzas\",\n  \"comercio\": \"<nombre>\",\n  \"puntaje\": <1 a 10, qué tan buen negocio es para Scaling>,\n  \"motivo\": \"<una o dos oraciones>\",\n  \"etapas\": [{\"etapa\": \"<desarrollo | implementación | capacitación | mantenimiento>\", \"horas\": <número>, \"en_que_me_baso\": \"<texto>\"}],\n  \"costos\": [{\"concepto\": \"<qué>\", \"monto_ars\": \"<número o sin dato>\", \"frecuencia\": \"<única | mensual>\", \"fuente\": \"<de dónde salió>\"}],\n  \"presupuesto\": {\"instalacion_ars\": \"<número o sin dato>\", \"abono_mensual_ars\": \"<número>\", \"margen_mensual_ars\": \"<número o sin dato>\"},\n  \"proyeccion\": [{\"meses\": 3, \"cobrado_ars\": \"<número>\", \"gastado_ars\": \"<número>\", \"ganancia_ars\": \"<número>\"}, {\"meses\": 6, \"...\": \"...\"}, {\"meses\": 12, \"...\": \"...\"}],\n  \"ajuste_sugerido\": \"<texto o null>\",\n  \"impacto_en_la_caja\": \"<cómo afecta este cliente a las cuentas de Scaling, según el Contador>\",\n  \"datos\": [{\"dato\": \"<qué usaste>\", \"fuente\": \"<de dónde salió>\"}]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 6000
+        }
+      },
+      "id": "e761e069-2ce3-4a57-8d0a-8c61ade5dbc6",
+      "name": "Finanzas",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst e = { ...$('Leer Prospección').item.json, finanzas: leer($json) };\ne.total = (Number(e.it.puntaje) || 0) + (Number(e.prospeccion.puntaje) || 0) + (Number(e.finanzas.puntaje) || 0);\nreturn e;",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "317d4e8e-d9f3-419c-a0b0-e8b1a3c6e18a",
+      "name": "Leer Finanzas",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn {\n  fecha: hoy, comercio: $json.comercio.nombre, total: $json.total,\n  it_puntaje: $json.it.puntaje, it_oferta: $json.it.oferta, it_motivo: $json.it.motivo,\n  prospeccion_puntaje: $json.prospeccion.puntaje, prospeccion_motivo: $json.prospeccion.motivo,\n  finanzas_puntaje: $json.finanzas.puntaje, finanzas_motivo: $json.finanzas.motivo,\n  abono_mensual_ars: $json.finanzas.presupuesto?.abono_mensual_ars,\n  detalle: celda(JSON.stringify({ it: $json.it, prospeccion: $json.prospeccion, finanzas: $json.finanzas })),\n};",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "054ce4ba-fd44-40ef-9eb2-1dcb5f53f563",
+      "name": "Armar fila",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Evaluaciones"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "cbb6ae07-c597-4908-887a-7ed9656d4d19",
+      "name": "Guardar evaluaciones",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nreturn $('Leer Finanzas').all().map(i => i.json)\n  .sort((a, b) => b.total - a.total).slice(0, 5).map(json => ({ json }));"
+      },
+      "id": "ddbf28cf-a4f7-4190-95b7-4e4a69e9fc46",
+      "name": "Elegir los 5 mejores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        0
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.it, presupuesto: $json.finanzas }) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el responsable Legal de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio. Tu trabajo es cuidar al CEO, Lucho, siempre dentro de la normativa argentina.\n\nTe van a pasar los comercios mejor puntuados, con la oferta y la revisión de seguridad de IT y el presupuesto de Finanzas. Tu revisión después la lee el Jefe de Gabinete. Para cada uno hacés tres cosas:\n\n1. Contrato: armá un borrador de contrato de prestación de servicios entre Scaling (Lucho) y el comercio. Tiene que incluir como mínimo:\n   - qué se entrega y qué no (alcance), con las etapas de Finanzas;\n   - precio de instalación, abono mensual, forma de pago, actualización por inflación y qué pasa si no paga;\n   - plazos y qué pasa si se atrasa cualquiera de las dos partes;\n   - de quién son el desarrollo, los datos y las cuentas (WhatsApp, Instagram, dominio);\n   - datos personales de los clientes del comercio (Ley 25.326): quién es responsable y qué hace cada uno;\n   - límite de responsabilidad de Scaling (caídas de WhatsApp, Meta, Google u otros servicios de terceros);\n   - duración, renovación y cómo se termina el contrato;\n   - jurisdicción en tribunales de la Provincia de Buenos Aires.\n2. Riesgos: listá a qué se expone Lucho con este cliente y esta oferta (cobro, responsabilidad, datos, impuestos, uso de plataformas de terceros) y cómo lo cubre el contrato.\n3. Lo que te excede: si algo necesita un abogado o un contador matriculado (por ejemplo, la inscripción fiscal de Lucho, facturación, un reclamo, un caso que no conocés bien), decilo claro, explicá por qué y qué tipo de profesional consultar. No lo resuelvas por tu cuenta.\n\nReglas:\n- Citá la ley o norma en la que te basás para cada punto importante. Si no estás seguro de una norma, decilo.\n- Escribí el contrato en castellano claro, sin palabras rebuscadas.\n- Aclará siempre que el contrato es un borrador y que conviene que lo revise un abogado antes de firmarlo.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Legal\",\n  \"comercio\": \"<nombre>\",\n  \"contrato_borrador\": \"<texto completo del contrato>\",\n  \"riesgos\": [{\"riesgo\": \"<qué>\", \"nivel\": \"<bajo | medio | alto>\", \"como_se_cubre\": \"<texto>\", \"norma\": \"<ley o norma, o sin dato>\"}],\n  \"me_excede\": [{\"tema\": \"<qué>\", \"por_que\": \"<texto>\", \"consultar_a\": \"<abogado | contador | otro>\"}],\n  \"datos\": [{\"dato\": \"<qué usaste>\", \"fuente\": \"<de dónde salió>\"}]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 16000
+        }
+      },
+      "id": "1c9dd36b-6cb6-4a39-8692-27cc3558a844",
+      "name": "Legal",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst legal = $input.all().map(i => leer(i.json));\nconst evaluaciones = $('Leer Finanzas').all().map(i => i.json);\nreturn [{ json: { evaluaciones, legal } }];"
+      },
+      "id": "85c65a41-ff65-44ed-b1de-91d77c2c94df",
+      "name": "Juntar para el Jefe",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ JSON.stringify($json) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el Jefe de Gabinete de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio. Sos el gerente general y el número dos del CEO, Lucho. Él decide y contacta en persona a los comercios; vos sos su último gran repaso antes de cada decisión.\n\nEl objetivo de Scaling: conseguir clientes que paguen un abono de 400.000 a 500.000 pesos por mes por un sistema confiable, útil y preciso, sin exponer a Lucho a pérdidas ni a riesgos legales.\n\nTe van a pasar todos los comercios de la tanda con lo que dijeron IT y Producto, Prospección, Finanzas y Legal, y el último resumen del Contador.\n\nCómo trabajás:\n- Criterio objetivo y necesario. Lo que sirve, lo demostrás con los datos de los agentes y su fuente. Lo que no sirve o puede generar una pérdida, lo remarcás con la misma claridad.\n- Revisás el trabajo de los demás agentes, no lo repetís. Si uno se contradice con otro, si un número no tiene fuente, si IT dejó un riesgo de seguridad sin cubrir o si Legal marcó algo alto, lo señalás y decís qué haría falta para resolverlo.\n- Traés las cosas cocinadas: para cada recomendación, el próximo paso concreto que tiene que dar Lucho.\n- Elegís como máximo 3 comercios. Si ninguno alcanza, lo decís y explicás qué cambiaría eso. No rellenás.\n- Sumás sugerencias solo si son notables: algo que acerque a Scaling a su objetivo de forma clara (una oferta que se repite, un precio que conviene cambiar, un riesgo que aparece en varios comercios). Si no hay ninguna, no inventes.\n- No inventás nada que no esté en lo que te pasaron.\n\nCuando Lucho te escriba para debatir algo, respondé directo y con argumentos. Si no estás de acuerdo con él, decíselo y explicá por qué; la decisión final es suya.\n\nEscribí en castellano rioplatense, simple y sin jerga.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Jefe de Gabinete\",\n  \"elegidos\": [\n    {\n      \"comercio\": \"<nombre>\",\n      \"por_que\": \"<lo que lo demuestra, con fuente>\",\n      \"oferta\": \"<qué>\",\n      \"presupuesto\": {\"instalacion_ars\": \"<número o sin dato>\", \"abono_mensual_ars\": \"<número>\", \"margen_mensual_ars\": \"<número o sin dato>\"},\n      \"riesgos_que_quedan\": [\"<de IT, Legal o Finanzas que no estén cubiertos>\"],\n      \"proximo_paso\": \"<qué tiene que hacer Lucho>\"\n    }\n  ],\n  \"descartados\": [{\"comercio\": \"<nombre>\", \"motivo\": \"<por qué>\"}],\n  \"observaciones_a_los_agentes\": [{\"agente\": \"<cuál>\", \"observacion\": \"<qué falla o falta>\"}],\n  \"sugerencias\": [{\"sugerencia\": \"<qué>\", \"por_que_acerca_al_objetivo\": \"<texto>\"}],\n  \"propuesta_para_el_ceo\": \"<el texto formal para Lucho>\"\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 12000
+        }
+      },
+      "id": "b28bbe09-b2d7-4191-a88f-cf076402ea8e",
+      "name": "Jefe de Gabinete",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst j = leer($json);\nreturn [{ json: {\n  fecha: hoy,\n  elegidos: (j.elegidos || []).map(e => e.comercio).join(', '),\n  propuesta_para_el_ceo: j.propuesta_para_el_ceo || j.texto,\n  detalle: celda(JSON.stringify(j)),\n} }];"
+      },
+      "id": "2c2c2f09-c50a-49b1-aae9-42a3dd71caee",
+      "name": "Armar propuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3840,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Propuestas"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "139a0dc1-c164-45dc-bb66-53d0018041c0",
+      "name": "Guardar propuesta",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        4080,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn { fecha: hoy, comercio: $('Elegir los 5 mejores').item.json.comercio.nombre,\n  contrato_borrador: celda(r.contrato_borrador || r.texto), riesgos: celda(JSON.stringify(r.riesgos || [])),\n  me_excede: celda(JSON.stringify(r.me_excede || [])) };",
+        "mode": "runOnceForEachItem"
+      },
+      "id": "aa5e4e74-9042-4895-877c-8b4d6ded0aca",
+      "name": "Armar contrato",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Contratos"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "0efb8882-57de-43fe-bbb6-b19865e69fe0",
+      "name": "Guardar contratos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3600,
+        240
+      ]
+    }
+  ],
+  "connections": {
+    "Probar a mano": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Automático": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Leer comercios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer comercios": {
+      "main": [
+        [
+          {
+            "node": "Limitar comercios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limitar comercios": {
+      "main": [
+        [
+          {
+            "node": "IT y Producto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IT y Producto": {
+      "main": [
+        [
+          {
+            "node": "Leer IT",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer IT": {
+      "main": [
+        [
+          {
+            "node": "Prospección",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prospección": {
+      "main": [
+        [
+          {
+            "node": "Leer Prospección",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Prospección": {
+      "main": [
+        [
+          {
+            "node": "Finanzas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finanzas": {
+      "main": [
+        [
+          {
+            "node": "Leer Finanzas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer Finanzas": {
+      "main": [
+        [
+          {
+            "node": "Armar fila",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar fila": {
+      "main": [
+        [
+          {
+            "node": "Guardar evaluaciones",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar evaluaciones": {
+      "main": [
+        [
+          {
+            "node": "Elegir los 5 mejores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Elegir los 5 mejores": {
+      "main": [
+        [
+          {
+            "node": "Legal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Legal": {
+      "main": [
+        [
+          {
+            "node": "Juntar para el Jefe",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Armar contrato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar para el Jefe": {
+      "main": [
+        [
+          {
+            "node": "Jefe de Gabinete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Jefe de Gabinete": {
+      "main": [
+        [
+          {
+            "node": "Armar propuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar propuesta": {
+      "main": [
+        [
+          {
+            "node": "Guardar propuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar contrato": {
+      "main": [
+        [
+          {
+            "node": "Guardar contratos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}
