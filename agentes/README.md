@@ -16,6 +16,8 @@ Los agentes 1 a 3 se corren una vez por comercio. Legal solo se corre con los 5 
 
 Aparte, `contador.md` le lleva las cuentas a Scaling: se corre una vez por mes con la pestaña "Caja" de la planilla, y su resumen se lo pasa a Finanzas y al Jefe de Gabinete.
 
+`posventa.md` cuida a los clientes que ya pagan: se corre una vez por mes con la pestaña "Soporte" y su resumen va al Jefe de Gabinete.
+
 Para empezar alcanza con IT y Producto y el Jefe de Gabinete.
 
 ## Qué devuelve cada uno
