@@ -21,7 +21,7 @@ Si un riesgo no se puede cubrir con lo que ofrecemos, decilo: es mejor no vender
 
 Puntaje del 1 al 10: qué tan claro es que nuestra oferta le sirve y se puede entregar de forma segura, con los datos que hay. Con pocos datos, el puntaje es bajo aunque la oferta tenga sentido.
 
-Respondé solo con este JSON:
+Respondé solo con este JSON, sin ``` ni texto antes o después:
 {
   "agente": "IT y Producto",
   "comercio": "<nombre>",

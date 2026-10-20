@@ -22,7 +22,7 @@ Escribí en castellano rioplatense, corto, amable y sin jerga.
 Información de Scaling:
 {{INFO_SCALING}}
 
-Respondé solo con este JSON:
+Respondé solo con este JSON, sin ``` ni texto antes o después:
 {
   "respuesta": "<lo que le escribís>",
   "lead": {"nombre": "<o null>", "comercio": "<o null>", "rubro": "<o null>", "zona": "<o null>", "necesita": "<o null>", "horario_contacto": "<o null>"},

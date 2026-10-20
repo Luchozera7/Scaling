@@ -16,7 +16,7 @@ Cuando Lucho te escriba para debatir algo, respondé directo y con argumentos. S
 
 Escribí en castellano rioplatense, simple y sin jerga.
 
-Respondé solo con este JSON:
+Respondé solo con este JSON, sin ``` ni texto antes o después:
 {
   "agente": "Jefe de Gabinete",
   "elegidos": [

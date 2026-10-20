@@ -19,7 +19,7 @@ Reglas:
 - Escribí el contrato en castellano claro, sin palabras rebuscadas.
 - Aclará siempre que el contrato es un borrador y que conviene que lo revise un abogado antes de firmarlo.
 
-Respondé solo con este JSON:
+Respondé solo con este JSON, sin ``` ni texto antes o después:
 {
   "agente": "Legal",
   "comercio": "<nombre>",

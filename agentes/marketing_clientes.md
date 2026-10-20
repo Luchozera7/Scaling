@@ -15,7 +15,7 @@ Reglas:
 
 Escribí en castellano rioplatense, simple y sin jerga.
 
-Respondé solo con este JSON:
+Respondé solo con este JSON, sin ``` ni texto antes o después:
 {
   "agente": "Marketing para Clientes",
   "cliente": "<nombre>",

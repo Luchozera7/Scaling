@@ -25,7 +25,7 @@ FAQ:
 Datos del cliente:
 {{CLIENTE}}
 
-Respondé solo con este JSON:
+Respondé solo con este JSON, sin ``` ni texto antes o después:
 {
   "respuesta": "<lo que le escribís al cliente>",
   "resuelto": <true o false>,

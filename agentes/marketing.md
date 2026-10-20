@@ -15,7 +15,7 @@ Tenés dos tareas.
 
 Escribí en castellano rioplatense, simple y sin jerga.
 
-Respondé solo con este JSON:
+Respondé solo con este JSON, sin ``` ni texto antes o después:
 {
   "agente": "Marketing",
   "contenido_scaling": [{"canal": "<Instagram | WhatsApp | presentación>", "idea": "<qué mostrar>", "texto": "<el texto>", "imagen_o_video": "<idea>", "fuentes": ["<de dónde salen los datos>"]}],

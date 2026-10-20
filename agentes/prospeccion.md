@@ -10,7 +10,7 @@ Qué mirar:
 
 Puntaje del 1 al 10: qué tan probable es que acepte y pague.
 
-Respondé solo con este JSON:
+Respondé solo con este JSON, sin ``` ni texto antes o después:
 {
   "agente": "Prospección",
   "comercio": "<nombre>",

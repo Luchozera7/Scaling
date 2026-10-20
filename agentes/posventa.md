@@ -13,7 +13,7 @@ Para todos juntos:
 
 Usá solo lo que te pasan. No inventes. Si un cliente no tuvo casos, decilo y no le busques problemas.
 
-Respondé solo con este JSON:
+Respondé solo con este JSON, sin ``` ni texto antes o después:
 {
   "agente": "Posventa",
   "mes": "<AAAA-MM>",
