@@ -6,13 +6,17 @@ y como mensaje se le pasa el comercio (una fila de la planilla) más lo que dije
 
 ## La mesa chica (una vez por semana, con los comercios nuevos)
 
-1. `it_producto.md`: qué le falta al comercio, qué le ofrecemos y cómo se entrega de forma segura (fuga de prompts, datos, claves).
+1. `it_producto.md`: qué le falta al comercio y qué le ofrecemos.
 2. `prospeccion.md`: qué tan buen cliente es.
 3. `finanzas.md`: presupuesto según las horas de desarrollo, implementación y mantenimiento, proyección a 3, 6 y 12 meses e impacto en nuestra caja.
 4. `legal.md`: borrador de contrato, riesgos para el CEO y lo que necesita un abogado o contador.
 5. `jefe_de_gabinete.md`: el gerente general. Revisa todo, elige como máximo 3, marca lo que no sirve y trae el próximo paso para el CEO.
 
 Los agentes 1 a 3 se corren una vez por comercio. Legal solo se corre con los 5 que mejor suman puntaje entre IT, Prospección y Finanzas (la cuenta la hace n8n, sin Claude). El Jefe de Gabinete se corre una vez con todo junto.
+
+## Una vez por tipo de oferta
+
+- `seguridad.md` (IT y Producto): revisión de seguridad de cada oferta (fuga de prompts, manipulación, datos, claves). Se repite solo si la oferta cambia.
 
 ## Una vez por mes
 
