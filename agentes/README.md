@@ -6,15 +6,17 @@ y como mensaje se le pasa el comercio (una fila de la planilla) más lo que dije
 
 ## Orden
 
-1. `it_producto.md`: qué le falta al comercio y qué le ofrecemos.
+1. `it_producto.md`: qué le falta al comercio, qué le ofrecemos y cómo se entrega de forma segura (fuga de prompts, datos, claves).
 2. `marketing.md`: qué tan buen cliente es.
-3. `finanzas.md`: presupuesto según las horas de desarrollo, implementación y mantenimiento, y proyección a 3, 6 y 12 meses.
-4. `jefe_de_gabinete.md`: recibe a todos los comercios evaluados, rankea y elige los 2 o 3 mejores.
-5. `legal.md`: para los elegidos, arma el borrador de contrato, lista los riesgos para el CEO y avisa lo que necesita un abogado o contador.
+3. `finanzas.md`: presupuesto según las horas de desarrollo, implementación y mantenimiento, proyección a 3, 6 y 12 meses e impacto en nuestra caja.
+4. `legal.md`: borrador de contrato, riesgos para el CEO y lo que necesita un abogado o contador.
+5. `jefe_de_gabinete.md`: el gerente general. Revisa todo, elige como máximo 3, marca lo que no sirve y trae el próximo paso para el CEO.
 
-Los agentes 1 a 3 se corren una vez por comercio. El 4 se corre una sola vez con todos juntos. El 5 solo con los elegidos, y su resultado va con la propuesta al CEO.
+Los agentes 1 a 3 se corren una vez por comercio. Legal solo se corre con los 5 que mejor suman puntaje entre IT, Marketing y Finanzas (la cuenta la hace n8n, sin Claude). El Jefe de Gabinete se corre una vez con todo junto.
 
-Para empezar alcanza con el 1 y el 4.
+Aparte, `contador.md` le lleva las cuentas a Scaling: se corre una vez por mes con la pestaña "Caja" de la planilla, y su resumen se lo pasa a Finanzas y al Jefe de Gabinete.
+
+Para empezar alcanza con IT y Producto y el Jefe de Gabinete.
 
 ## Qué devuelve cada uno
 
@@ -32,5 +34,5 @@ Siempre JSON, con el mismo formato base, para que n8n lo pueda guardar en la pla
 }
 ```
 
-Cada agente agrega sus propios campos (por ejemplo `oferta` o `presupuesto`). Legal y el Jefe de Gabinete usan su propio formato.
+Cada agente agrega sus propios campos (por ejemplo `oferta` o `presupuesto`). Legal, el Contador y el Jefe de Gabinete usan su propio formato.
 Si un dato no se sabe, el agente pone "sin dato" y no lo inventa.
