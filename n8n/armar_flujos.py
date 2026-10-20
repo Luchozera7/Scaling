@@ -26,7 +26,9 @@ PESTANAS = {
                      "prospeccion_puntaje", "prospeccion_motivo", "finanzas_puntaje",
                      "finanzas_motivo", "abono_mensual_ars", "detalle"],
     "Propuestas": ["fecha", "elegidos", "propuesta_para_el_ceo", "detalle"],
-    "Contratos": ["fecha", "comercio", "contrato_borrador", "riesgos", "me_excede"],
+    "Adelantos": ["fecha", "comercio", "oferta", "que_va_a_ver_el_cliente", "legal", "supuestos", "html",
+                  "revision_legal"],
+    "Contratos": ["fecha", "comercio", "contrato_borrador", "falta_completar", "riesgos", "me_excede"],
     "Informes": ["fecha", "agente", "resumen", "detalle"],
     "Clientes": ["nombre", "rubro", "zona", "oferta", "abono_mensual_ars", "instagram", "notas"],
     "Caja": ["fecha", "concepto", "tipo", "monto", "cliente", "comprobante"],
@@ -166,7 +168,7 @@ def mesa_chica():
         "1. En **Config** pegá el link de tu planilla y el valor de tu hora.\n"
         "2. En cada nodo de Claude y de Google Sheets elegí tu credencial.\n"
         "3. Para probar: **Execute workflow**. Evalúa los primeros comercios (max_comercios en Config).\n"
-        "4. El resultado queda en las pestañas **Evaluaciones**, **Contratos** y **Propuestas**.\n\n"
+        "4. El resultado queda en las pestañas **Evaluaciones**, **Adelantos** y **Propuestas**.\n\n"
         "El disparador Automático corre los lunes a las 9 cuando publiques el flujo."))
     a, b = disparadores(f, {"field": "weeks", "triggerAtDay": [1], "triggerAtHour": 9})
     c = config(f, [("max_comercios", 5, "number"), ("valor_hora_ars", "sin definir", "string")])
@@ -204,13 +206,18 @@ def mesa_chica():
     top = codigo(f, "Elegir los 5 mejores", (
         "return $('Leer Finanzas').all().map(i => i.json)\n"
         "  .sort((a, b) => b.total - a.total).slice(0, 5).map(json => ({ json }));"))
+    ad = claude(f, "Adelanto", "adelanto", (
+        "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.it }) }}"), max_tokens=8000)
+    l_ad = codigo(f, "Leer adelanto", "return { ...$('Elegir los 5 mejores').item.json, adelanto: leer($json) };",
+                  por_item=True)
     le = claude(f, "Legal", "legal", (
-        "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.it, presupuesto: $json.finanzas }) }}"),
-        max_tokens=16000)
+        "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.it, presupuesto: $json.finanzas, adelanto: $json.adelanto }) }}"))
     l_le = codigo(f, "Juntar para el Jefe", (
         "const legal = $input.all().map(i => leer(i.json));\n"
+        "// Al Jefe le alcanza con saber qué muestra cada adelanto, sin la página entera.\n"
+        "const adelantos = $('Leer adelanto').all().map(i => { const { html, ...resto } = i.json.adelanto; return resto; });\n"
         "const evaluaciones = $('Leer Finanzas').all().map(i => i.json);\n"
-        "return [{ json: { evaluaciones, legal } }];"))
+        "return [{ json: { evaluaciones, adelantos, legal } }];"))
     je = claude(f, "Jefe de Gabinete", "jefe_de_gabinete", "={{ JSON.stringify($json) }}", max_tokens=12000)
     l_je = codigo(f, "Armar propuesta", (
         "const j = leer($json);\n"
@@ -221,16 +228,19 @@ def mesa_chica():
         "  detalle: celda(JSON.stringify(j)),\n"
         "} }];"))
     g_pr = guardar_hoja(f, "Guardar propuesta", "Propuestas")
-    f.cadena(c, leer, lim, it, l_it, pr, l_pr, fi, l_fi, fila, g_ev, top, le, l_le, je, l_je, g_pr)
-    # Cada contrato de Legal va a su propia fila en "Contratos".
+    f.cadena(c, leer, lim, it, l_it, pr, l_pr, fi, l_fi, fila, g_ev, top, ad, l_ad, le, l_le, je, l_je, g_pr)
+    # Cada adelanto va a su propia fila en "Adelantos", con lo que dijo Legal.
     x_legal = next(n["position"][0] for n in f.nodos if n["name"] == le)
-    co = codigo(f, "Armar contrato", (
+    fa = codigo(f, "Armar adelanto", (
         "const r = leer($json);\n"
-        "return { fecha: hoy, comercio: $('Elegir los 5 mejores').item.json.comercio.nombre,\n"
-        "  contrato_borrador: celda(r.contrato_borrador || r.texto), riesgos: celda(JSON.stringify(r.riesgos || [])),\n"
-        "  me_excede: celda(JSON.stringify(r.me_excede || [])) };"), por_item=True, pos=(x_legal + 240, 240))
-    g_co = guardar_hoja(f, "Guardar contratos", "Contratos", (x_legal + 480, 240))
-    f.cadena(le, co, g_co)
+        "const e = $('Leer adelanto').item.json;\n"
+        "return { fecha: hoy, comercio: e.comercio.nombre, oferta: e.it.oferta,\n"
+        "  que_va_a_ver_el_cliente: e.adelanto.que_va_a_ver_el_cliente || e.adelanto.error,\n"
+        "  legal: [r.se_puede_ofrecer, r.motivo || r.texto].filter(Boolean).join('. '),\n"
+        "  supuestos: celda(JSON.stringify(e.adelanto.supuestos || [])), html: celda(e.adelanto.html || ''),\n"
+        "  revision_legal: celda(JSON.stringify(r)) };"), por_item=True, pos=(x_legal + 240, 240))
+    g_ad = guardar_hoja(f, "Guardar adelantos", "Adelantos", (x_legal + 480, 240))
+    f.cadena(le, fa, g_ad)
     # Ejecutar "Elegir los 5 mejores" una sola vez aunque se guarden varias filas.
     for n in f.nodos:
         if n["name"] == "Elegir los 5 mejores":
@@ -409,6 +419,70 @@ def seguridad():
     f.guardar("5_revision_de_seguridad.json")
 
 
+# --- 6. Contrato de cliente ---
+
+def contrato():
+    f = Flujo("Scaling 6 - Contrato de cliente", (
+        "## Contrato de cliente\n"
+        "Se corre a mano cuando un comercio acepta la propuesta.\n"
+        "1. En **Config** pegá el link de tu planilla y completá lo que acordaste con el cliente.\n"
+        "2. Elegí tus credenciales en cada nodo.\n"
+        "3. **Execute workflow**. El borrador queda en **Contratos**. Antes de firmar, que lo revise un abogado."))
+    a = f.nodo("Probar a mano", "n8n-nodes-base.manualTrigger", 1, {})
+    c = config(f, [("comercio", "Nombre del comercio", "string"),
+                   ("oferta", "turnos online", "string"),
+                   ("instalacion_ars", "Completar", "string"),
+                   ("abono_mensual_ars", "Completar", "string"),
+                   ("forma_de_pago", "Completar: por ejemplo, transferencia del 1 al 10 de cada mes", "string"),
+                   ("lo_acordado", "Completar: qué se entrega, plazos y lo que hablaron", "string")])
+    cl = claude(f, "Legal - Contrato", "legal_contrato", (
+        "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.oferta, instalacion_ars: $json.instalacion_ars, "
+        "abono_mensual_ars: $json.abono_mensual_ars, forma_de_pago: $json.forma_de_pago, lo_acordado: $json.lo_acordado }) }}"),
+        max_tokens=16000)
+    co = codigo(f, "Armar contrato", (
+        "const r = leer($json);\n"
+        "return [{ json: { fecha: hoy, comercio: $('Config').first().json.comercio,\n"
+        "  contrato_borrador: celda(r.contrato_borrador || r.texto), falta_completar: celda(JSON.stringify(r.falta_completar || [])),\n"
+        "  riesgos: celda(JSON.stringify(r.riesgos || [])), me_excede: celda(JSON.stringify(r.me_excede || [])) } }];"))
+    g = guardar_hoja(f, "Guardar contrato", "Contratos")
+    f.cadena(a, c, cl, co, g)
+    f.guardar("6_contrato_de_cliente.json")
+
+
+# --- 7. Ver adelantos ---
+
+def ver_adelantos():
+    f = Flujo("Scaling 7 - Ver adelantos", (
+        "## Ver adelantos\n"
+        "Un link para abrir en el celular los adelantos y mostrárselos al comercio.\n"
+        "1. En **Config** pegá el link de tu planilla y elegí tu credencial de Google.\n"
+        "2. En **Ver adelantos** elegí una credencial *Basic Auth* con un usuario y contraseña que inventes vos: el link los va a pedir.\n"
+        "3. Tocá **Publish** y copiá la *Production URL* de **Ver adelantos**. Abrila en el celular: muestra la lista de comercios y tocás uno."))
+    w = f.nodo("Ver adelantos", "n8n-nodes-base.webhook", 2.1, {
+        "httpMethod": "GET", "path": "adelantos", "authentication": "basicAuth",
+        "responseMode": "responseNode", "options": {}}, webhookId=str(uuid.uuid4()))
+    c = config(f)
+    le = leer_hoja(f, "Leer adelantos", "Adelantos")
+    pa = codigo(f, "Armar página", (
+        "const pedido = $('Ver adelantos').first().json.query.comercio;\n"
+        "const ultimos = new Map();\n"
+        "for (const i of $input.all()) if (i.json.comercio) ultimos.set(i.json.comercio, i.json);\n"
+        "const elegido = ultimos.get(pedido);\n"
+        "if (elegido && elegido.html) return [{ json: { html: elegido.html } }];\n"
+        "const esc = s => String(s ?? '').replace(/[&<>\"']/g, c => '&#' + c.charCodeAt(0) + ';');\n"
+        "const lista = [...ultimos.values()].reverse().map(a =>\n"
+        "  `<li><a href='?comercio=${encodeURIComponent(a.comercio)}'>${esc(a.comercio)}</a><br><small>${esc(a.oferta)} · ${esc(a.fecha)}</small></li>`).join('');\n"
+        "return [{ json: { html: `<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>\n"
+        "<meta name='viewport' content='width=device-width, initial-scale=1'><title>Adelantos de Scaling</title>\n"
+        "<style>body{font-family:sans-serif;margin:16px;line-height:1.4}li{margin:14px 0}a{font-size:1.1em}</style></head>\n"
+        "<body><h1>Adelantos</h1>${lista ? '<ul>' + lista + '</ul>' : '<p>Todavía no hay adelantos. Se arman cuando corre la mesa chica.</p>'}</body></html>` } }];"))
+    r = f.nodo("Mostrar página", "n8n-nodes-base.respondToWebhook", 1.4, {
+        "respondWith": "text", "responseBody": "={{ $json.html }}",
+        "options": {"responseHeaders": {"entries": [{"name": "Content-Type", "value": "text/html; charset=utf-8"}]}}})
+    f.cadena(w, c, le, pa, r)
+    f.guardar("7_ver_adelantos.json")
+
+
 # --- Planilla modelo ---
 
 def planilla():
@@ -433,5 +507,7 @@ if __name__ == "__main__":
     informes()
     chatbots()
     seguridad()
+    contrato()
+    ver_adelantos()
     planilla()
     print("Listo:", ", ".join(sorted(p.name for p in SALIDA.iterdir() if p.suffix in (".json", ".xlsx"))))

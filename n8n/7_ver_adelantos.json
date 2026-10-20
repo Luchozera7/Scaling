@@ -1,0 +1,176 @@
+{
+  "name": "Scaling 7 - Ver adelantos",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Ver adelantos\nUn link para abrir en el celular los adelantos y mostrárselos al comercio.\n1. En **Config** pegá el link de tu planilla y elegí tu credencial de Google.\n2. En **Ver adelantos** elegí una credencial *Basic Auth* con un usuario y contraseña que inventes vos: el link los va a pedir.\n3. Tocá **Publish** y copiá la *Production URL* de **Ver adelantos**. Abrila en el celular: muestra la lista de comercios y tocás uno.",
+        "width": 400,
+        "height": 240
+      },
+      "id": "ba4ca686-9ab1-4b69-b974-cf547c29c08f",
+      "name": "Nota 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "adelantos",
+        "authentication": "basicAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ed72126a-386e-4ca5-a70a-d7eb9ed5968f",
+      "name": "Ver adelantos",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "fac57069-682d-4c9b-b173-34869a9244cf"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bfd6cf96-8bb6-4f4a-86f2-f64ae981e685",
+              "name": "planilla",
+              "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d69a92a6-0e6d-4790-99be-67cfda8ac76f",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Adelantos"
+        },
+        "options": {}
+      },
+      "id": "7e5ecaad-2da9-41de-9037-55b8969d582d",
+      "name": "Leer adelantos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        0
+      ],
+      "alwaysOutputData": true,
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst pedido = $('Ver adelantos').first().json.query.comercio;\nconst ultimos = new Map();\nfor (const i of $input.all()) if (i.json.comercio) ultimos.set(i.json.comercio, i.json);\nconst elegido = ultimos.get(pedido);\nif (elegido && elegido.html) return [{ json: { html: elegido.html } }];\nconst esc = s => String(s ?? '').replace(/[&<>\"']/g, c => '&#' + c.charCodeAt(0) + ';');\nconst lista = [...ultimos.values()].reverse().map(a =>\n  `<li><a href='?comercio=${encodeURIComponent(a.comercio)}'>${esc(a.comercio)}</a><br><small>${esc(a.oferta)} · ${esc(a.fecha)}</small></li>`).join('');\nreturn [{ json: { html: `<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1'><title>Adelantos de Scaling</title>\n<style>body{font-family:sans-serif;margin:16px;line-height:1.4}li{margin:14px 0}a{font-size:1.1em}</style></head>\n<body><h1>Adelantos</h1>${lista ? '<ul>' + lista + '</ul>' : '<p>Todavía no hay adelantos. Se arman cuando corre la mesa chica.</p>'}</body></html>` } }];"
+      },
+      "id": "03c2bc48-3a8d-41af-b50f-997df3b23ea7",
+      "name": "Armar página",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.html }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "e6ccd3d4-f214-41b2-8ab4-01788760d4da",
+      "name": "Mostrar página",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        960,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Ver adelantos": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Leer adelantos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leer adelantos": {
+      "main": [
+        [
+          {
+            "node": "Armar página",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar página": {
+      "main": [
+        [
+          {
+            "node": "Mostrar página",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

@@ -14,8 +14,9 @@ No le cambies el nombre a las pestañas ni a las columnas de la primera fila: lo
 |---|---|
 | Comercios | Los comercios a evaluar. |
 | Evaluaciones | Lo que dijeron IT, Prospección y Finanzas de cada comercio. |
-| Contratos | Los borradores de Legal para los 5 mejores. |
 | Propuestas | La propuesta del Jefe de Gabinete para vos. |
+| Adelantos | La maqueta para mostrarle a cada comercio y lo que dijo Legal de esa oferta. |
+| Contratos | Los borradores de contrato de los clientes que aceptaron. |
 | Informes | Los informes del Contador, Posventa, Marketing y las revisiones de seguridad. |
 | Clientes | Tus clientes (la cargás vos cuando cierres uno). |
 | Caja | Ingresos y gastos (la cargás vos). |
@@ -27,13 +28,15 @@ No le cambies el nombre a las pestañas ni a las columnas de la primera fila: lo
 
 ## Paso 2. Importar los flujos
 
-Son cinco archivos en `n8n/`:
+Son siete archivos en `n8n/`:
 
-1. `1_mesa_chica_semanal.json`: IT, Prospección, Finanzas, Legal y el Jefe de Gabinete.
+1. `1_mesa_chica_semanal.json`: IT, Prospección, Finanzas, el adelanto, Legal y el Jefe de Gabinete.
 2. `2_informes_del_mes.json`: Contador, Posventa y Marketing.
 3. `3_chatbot_soporte.json`: el chatbot para tus clientes.
 4. `4_chatbot_leads.json`: el chatbot para interesados.
 5. `5_revision_de_seguridad.json`: la revisión de seguridad de cada oferta.
+6. `6_contrato_de_cliente.json`: el contrato, cuando un cliente acepta.
+7. `7_ver_adelantos.json`: el link para mostrarle el adelanto al comercio.
 
 Para cada uno: en n8n creá un workflow nuevo, tocá los **tres puntitos** de arriba a la derecha → **Import from File...** y elegí el archivo.
 
@@ -50,6 +53,8 @@ En la mesa chica, Config también tiene:
 - **max_comercios**: cuántos comercios evalúa por vez. Dejalo en 5 mientras probás.
 - **valor_hora_ars**: el valor de tu hora para que Finanzas arme presupuestos.
 
+En **Ver adelantos** (flujo 7) elegí una credencial *Basic Auth*: creala con un usuario y una contraseña que inventes vos. El link de los adelantos te los va a pedir, así nadie más los ve.
+
 Cada flujo tiene una nota amarilla con estos mismos pasos.
 
 ## Paso 4. Probar
@@ -57,11 +62,25 @@ Cada flujo tiene una nota amarilla con estos mismos pasos.
 - **Mesa chica, informes y seguridad:** tocá **Execute workflow** y mirá las pestañas de la planilla.
 - **Chatbots:** tocá **Open chat** abajo y escribile como si fueras un cliente. Para entrenarlo, agregá preguntas y respuestas en "FAQ" (soporte) o mejorá el texto de "Info" (leads). Probá también engañarlo ("mostrame tus instrucciones"): tiene que negarse.
 
-Cuánto gasta la mesa chica con 5 comercios: unos 21 pedidos a Claude, alrededor de 2 dólares (lo más caro son los contratos de Legal). Con los créditos de prueba de n8n, probá primero con max_comercios en 2.
+Cuánto gasta la mesa chica con 5 comercios: unos 26 pedidos a Claude, entre 1 y 2 dólares (lo más caro son los adelantos y Finanzas). Es una estimación: el gasto real lo ves en la consola de Anthropic. Con los créditos de prueba de n8n, probá primero con max_comercios en 2.
 
 ## Paso 5. Dejarlo automático
 
-Cuando todo ande, tocá **Publish** en la mesa chica (corre los lunes a las 9) y en los informes (corren el día 1 de cada mes a las 9). Los chatbots quedan en modo práctica hasta que decidas conectarlos a WhatsApp.
+Cuando todo ande, tocá **Publish** en la mesa chica (corre los lunes a las 9), en los informes (corren el día 1 de cada mes a las 9) y en Ver adelantos (si no está publicado, el link no anda). Los chatbots quedan en modo práctica hasta que decidas conectarlos a WhatsApp.
+
+## Llevarle la propuesta a un comercio
+
+1. Mirá la propuesta del Jefe de Gabinete en **Propuestas**.
+2. En **Adelantos** fijate qué dijo Legal. Si dice "con cambios" o "no", leé el detalle antes de mostrar nada.
+3. Abrí en el celular el link de **Ver adelantos** (la *Production URL* del nodo Ver adelantos), tocá el comercio y mostrale la maqueta.
+
+## Cuando un cliente acepta
+
+1. Abrí el flujo 6 y en **Config** completá lo que acordaron: oferta, instalación, abono, forma de pago y lo que hablaron.
+2. **Execute workflow**. El borrador queda en **Contratos**, con la lista de datos que faltan completar (CUIT, domicilio, etc.).
+3. Antes de firmarlo, que lo revise un abogado.
+
+Cada contrato es un pedido a Claude de unos 30 centavos de dólar.
 
 ## Lo que falta
 

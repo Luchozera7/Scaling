@@ -1,0 +1,220 @@
+{
+  "name": "Scaling 6 - Contrato de cliente",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Contrato de cliente\nSe corre a mano cuando un comercio acepta la propuesta.\n1. En **Config** pegá el link de tu planilla y completá lo que acordaste con el cliente.\n2. Elegí tus credenciales en cada nodo.\n3. **Execute workflow**. El borrador queda en **Contratos**. Antes de firmar, que lo revise un abogado.",
+        "width": 400,
+        "height": 240
+      },
+      "id": "200985d6-dfc8-4177-851a-57724bd58a29",
+      "name": "Nota 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -420,
+        -260
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "d46f9064-4e62-4b54-9553-b85fc113a2ec",
+      "name": "Probar a mano",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8053341f-96ef-4a69-a205-f32473b66538",
+              "name": "planilla",
+              "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
+              "type": "string"
+            },
+            {
+              "id": "5bb76243-03f1-4bf7-98ea-5b8f066d15d6",
+              "name": "comercio",
+              "value": "Nombre del comercio",
+              "type": "string"
+            },
+            {
+              "id": "44f47bdb-ff11-498e-9bb5-524d774b927d",
+              "name": "oferta",
+              "value": "turnos online",
+              "type": "string"
+            },
+            {
+              "id": "e4256c44-6cdd-4c0f-9054-0feb18aa20f2",
+              "name": "instalacion_ars",
+              "value": "Completar",
+              "type": "string"
+            },
+            {
+              "id": "5e445ef7-b637-4f50-8711-8581332a0b3d",
+              "name": "abono_mensual_ars",
+              "value": "Completar",
+              "type": "string"
+            },
+            {
+              "id": "ed927f14-93be-480c-9aa3-d2c6f00d42f1",
+              "name": "forma_de_pago",
+              "value": "Completar: por ejemplo, transferencia del 1 al 10 de cada mes",
+              "type": "string"
+            },
+            {
+              "id": "e385c428-db80-455f-afe9-30abe927d2d1",
+              "name": "lo_acordado",
+              "value": "Completar: qué se entrega, plazos y lo que hablaron",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "353bf472-f4ba-4820-84a2-ee093347212f",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "text",
+        "operation": "message",
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "claude-opus-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.oferta, instalacion_ars: $json.instalacion_ars, abono_mensual_ars: $json.abono_mensual_ars, forma_de_pago: $json.forma_de_pago, lo_acordado: $json.lo_acordado }) }}",
+              "role": "user"
+            }
+          ]
+        },
+        "simplify": true,
+        "options": {
+          "system": "Sos el responsable Legal de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio. Tu trabajo es cuidar al CEO, Lucho, siempre dentro de la normativa argentina.\n\nUn comercio aceptó la propuesta de Scaling. Lucho te pasa lo que acordaron: el comercio, la oferta, el precio de instalación, el abono, la forma de pago y lo que hablaron. Hacés tres cosas:\n\n1. Contrato: armá un borrador de contrato de prestación de servicios entre Scaling (Lucho) y el comercio. Tiene que incluir como mínimo:\n   - qué se entrega y qué no (alcance);\n   - precio de instalación, abono mensual, forma de pago, actualización por inflación y qué pasa si no paga;\n   - plazos y qué pasa si se atrasa cualquiera de las dos partes;\n   - de quién son el desarrollo, los datos y las cuentas (WhatsApp, Instagram, dominio);\n   - datos personales de los clientes del comercio (Ley 25.326): quién es responsable y qué hace cada uno;\n   - límite de responsabilidad de Scaling (caídas de WhatsApp, Meta, Google u otros servicios de terceros);\n   - duración, renovación y cómo se termina el contrato;\n   - jurisdicción en tribunales de la Provincia de Buenos Aires.\n2. Riesgos: listá a qué se expone Lucho con este cliente y esta oferta (cobro, responsabilidad, datos, impuestos, uso de plataformas de terceros) y cómo lo cubre el contrato.\n3. Lo que te excede: si algo necesita un abogado o un contador matriculado (por ejemplo, la inscripción fiscal de Lucho, facturación, un reclamo, un caso que no conocés bien), decilo claro, explicá por qué y qué tipo de profesional consultar. No lo resuelvas por tu cuenta.\n\nReglas:\n- Usá solo lo que te pasó Lucho. Lo que falte (CUIT, DNI, domicilio, fechas), dejalo como [completar: qué va] en el contrato y listalo en \"falta_completar\". No lo inventes.\n- Citá la ley o norma en la que te basás para cada punto importante. Si no estás seguro de una norma, decilo.\n- Escribí el contrato en castellano claro, sin palabras rebuscadas.\n- Aclará siempre que el contrato es un borrador y que conviene que lo revise un abogado antes de firmarlo.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"Legal - Contrato\",\n  \"comercio\": \"<nombre>\",\n  \"contrato_borrador\": \"<texto completo del contrato>\",\n  \"falta_completar\": [\"<dato que tiene que cargar Lucho>\"],\n  \"riesgos\": [{\"riesgo\": \"<qué>\", \"nivel\": \"<bajo | medio | alto>\", \"como_se_cubre\": \"<texto>\", \"norma\": \"<ley o norma, o sin dato>\"}],\n  \"me_excede\": [{\"tema\": \"<qué>\", \"por_que\": \"<texto>\", \"consultar_a\": \"<abogado | contador | otro>\"}],\n  \"datos\": [{\"dato\": \"<qué usaste>\", \"fuente\": \"<de dónde salió>\"}]\n}",
+          "includeMergedResponse": true,
+          "maxTokens": 16000
+        }
+      },
+      "id": "14bcfb4e-ac21-4496-8c8b-4aeea8d16cd4",
+      "name": "Legal - Contrato",
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, comercio: $('Config').first().json.comercio,\n  contrato_borrador: celda(r.contrato_borrador || r.texto), falta_completar: celda(JSON.stringify(r.falta_completar || [])),\n  riesgos: celda(JSON.stringify(r.riesgos || [])), me_excede: celda(JSON.stringify(r.me_excede || [])) } }];"
+      },
+      "id": "4dbf9f2c-32ab-4944-8f9f-459e53da8240",
+      "name": "Armar contrato",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Config').first().json.planilla }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Contratos"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "ca286e83-b2bf-4d3f-83ca-f2875b2142cd",
+      "name": "Guardar contrato",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Probar a mano": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Legal - Contrato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Legal - Contrato": {
+      "main": [
+        [
+          {
+            "node": "Armar contrato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar contrato": {
+      "main": [
+        [
+          {
+            "node": "Guardar contrato",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

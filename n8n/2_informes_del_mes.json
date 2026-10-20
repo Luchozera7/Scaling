@@ -7,7 +7,7 @@
         "width": 400,
         "height": 240
       },
-      "id": "b5240041-9246-42f0-8f77-62f492a2d471",
+      "id": "f51ca20b-786f-4776-8b97-1cc381fad7ca",
       "name": "Nota 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -18,7 +18,7 @@
     },
     {
       "parameters": {},
-      "id": "bb9b11a5-44c1-4367-a220-3077725f17b6",
+      "id": "acaf723d-a0b1-4ee3-821b-ce41d7514e07",
       "name": "Probar a mano",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -39,7 +39,7 @@
           ]
         }
       },
-      "id": "29018e84-6687-4b23-be94-016a887c3abc",
+      "id": "cdc997ed-e858-42d4-9d1b-6d6c8d6aac21",
       "name": "Automático",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -54,7 +54,7 @@
         "assignments": {
           "assignments": [
             {
-              "id": "bb730ab4-2e1a-48ff-a7b1-fe4528cc719c",
+              "id": "067768df-b33e-4e93-bb3b-da1953ed9158",
               "name": "planilla",
               "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
               "type": "string"
@@ -63,7 +63,7 @@
         },
         "options": {}
       },
-      "id": "9e01ffdc-663e-41e2-8275-253cb7bed24b",
+      "id": "f2533817-769d-482b-8aff-8d2ccd71fb9f",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -88,7 +88,7 @@
         },
         "options": {}
       },
-      "id": "6ec75bfc-7e78-4061-8c58-e4b48dc8f2a4",
+      "id": "8e4cbbc5-f15d-412b-a01e-13632383eb29",
       "name": "Leer caja",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -115,7 +115,7 @@
         },
         "options": {}
       },
-      "id": "ab34f810-3436-4621-a886-1ea69a5019f3",
+      "id": "6f110557-0ba2-4ae3-b988-0512253a9ae2",
       "name": "Leer clientes (Contador)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -130,7 +130,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst sinVacios = n => $(n).all().map(i => i.json).filter(o => Object.keys(o).length);\nreturn [{ json: { mes: hoy.slice(0, 7), movimientos: sinVacios('Leer caja'), clientes: sinVacios('Leer clientes (Contador)') } }];"
       },
-      "id": "00a62d00-fbbf-4cd8-a0f8-72a9ad55c54a",
+      "id": "44cd58f6-e615-45cb-ba3d-d939304743db",
       "name": "Juntar caja",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -163,7 +163,7 @@
           "maxTokens": 4000
         }
       },
-      "id": "0c85ed2f-e063-4c22-a7d0-82d10d1bc178",
+      "id": "e301b437-f09c-4077-b12a-798b13ef886f",
       "name": "Contador",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
@@ -176,7 +176,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, agente: 'Contador', resumen: r.alertas ? r.alertas.join(' | ') : (r.texto || ''), detalle: celda(JSON.stringify(r)) } }];"
       },
-      "id": "4fb7afed-07ec-46e9-9865-4be1824aec3a",
+      "id": "7b8758c5-c948-49f0-9a8d-a578f5c04881",
       "name": "Informe Contador",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -209,7 +209,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "9fb23a1b-20b8-4534-afe9-7b3fc337af33",
+      "id": "e87dfd1e-0d5c-47e9-8c0c-af213c239090",
       "name": "Guardar informe Contador",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -234,7 +234,7 @@
         },
         "options": {}
       },
-      "id": "f6ec72d6-0972-4fcc-ab99-1eb44d1b7d33",
+      "id": "65d8b59d-8572-4afb-b771-2b77607af079",
       "name": "Leer soporte",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -261,7 +261,7 @@
         },
         "options": {}
       },
-      "id": "c6cd7882-7d9d-4215-b1a5-b6d54fff019b",
+      "id": "8a533e70-3a62-4797-abfb-f6594f7f9f87",
       "name": "Leer clientes (Posventa)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -276,7 +276,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst sinVacios = n => $(n).all().map(i => i.json).filter(o => Object.keys(o).length);\nreturn [{ json: { mes: hoy.slice(0, 7), casos: sinVacios('Leer soporte'), clientes: sinVacios('Leer clientes (Posventa)') } }];"
       },
-      "id": "a8d9d600-9db7-4a8a-99e0-6fc58114feb0",
+      "id": "92ee41e3-249b-4aa7-86ed-5dfe4b6342c3",
       "name": "Juntar soporte",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -309,7 +309,7 @@
           "maxTokens": 4000
         }
       },
-      "id": "2c092b4d-4504-48bc-86c5-a94646be94bf",
+      "id": "7affc927-d91b-466a-8b94-2c5c9517c06c",
       "name": "Posventa",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
@@ -322,7 +322,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, agente: 'Posventa', resumen: (r.clientes || []).map(c => c.cliente + ': ' + c.estado).join(' | ') || (r.texto || ''), detalle: celda(JSON.stringify(r)) } }];"
       },
-      "id": "902d0dac-cae3-4a63-9dd5-d902a3d8d3b6",
+      "id": "a9f2c561-7268-4af9-b200-013dbead305a",
       "name": "Informe Posventa",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -355,7 +355,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "5b044088-08c4-49e1-a47d-271bf7dfe24a",
+      "id": "db51306b-745e-4a87-a4f7-8c1fb80d603e",
       "name": "Guardar informe Posventa",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -380,7 +380,7 @@
         },
         "options": {}
       },
-      "id": "31e6e81f-aac5-452e-ab91-321fb15ea87b",
+      "id": "e4182912-c125-4d7a-8f68-4723e89cac7c",
       "name": "Leer clientes (Marketing)",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
@@ -395,7 +395,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst c = $input.all().map(i => i.json).filter(o => o.nombre);\nreturn c.length ? c.map(json => ({ json })) : [{ json: { sin_clientes: true } }];"
       },
-      "id": "2c36c5c6-f961-475e-a206-0fd115b39f37",
+      "id": "b0eee08c-cbcd-4c6d-8b10-c8b842b2f881",
       "name": "Clientes reales",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -415,7 +415,7 @@
           },
           "conditions": [
             {
-              "id": "91dc3c48-c533-4b9e-a261-0637fcc65e88",
+              "id": "f1f9046a-c8a0-492e-9aab-953e3a8afc9a",
               "leftValue": "={{ $json.sin_clientes === true }}",
               "rightValue": "",
               "operator": {
@@ -429,7 +429,7 @@
         },
         "options": {}
       },
-      "id": "f245c8eb-4304-4563-942e-e689237965bb",
+      "id": "5a408082-33d8-4e89-8992-68e5dfa547a8",
       "name": "¿Hay clientes?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -462,7 +462,7 @@
           "maxTokens": 4000
         }
       },
-      "id": "dac217cd-9175-44b7-8409-f6f4f1cb0dda",
+      "id": "28946225-e485-40df-9474-a7471d94d78b",
       "name": "Marketing para Clientes",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
@@ -475,7 +475,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nlet propuestas = [];\ntry { propuestas = $('Marketing para Clientes').all().map(i => leer(i.json)); } catch (e) {}\nreturn [{ json: { mes: hoy.slice(0, 7), propuestas_de_marketing_para_clientes: propuestas,\n  resultados_de_clientes: 'Todavía no hay resultados cargados.' } }];"
       },
-      "id": "beb67984-c1c9-4753-8277-d844520e2a5a",
+      "id": "e8870d79-3467-4e20-9df5-519580bda412",
       "name": "Juntar para la gerente",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -508,7 +508,7 @@
           "maxTokens": 8000
         }
       },
-      "id": "8a219ca1-cda3-4240-b1f7-ae9659bad1d6",
+      "id": "ddce2227-cf0d-4daa-887b-05beef8e61cc",
       "name": "Gerente de Marketing",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
@@ -521,7 +521,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, agente: 'Marketing', resumen: (r.contenido_scaling || []).map(c => c.idea).join(' | ') || (r.texto || ''), detalle: celda(JSON.stringify(r)) } }];"
       },
-      "id": "fe586de8-8e0f-47c0-b899-06b70158c3cf",
+      "id": "43cf9dd4-8b54-4a47-b51e-72fb5b4639d1",
       "name": "Informe Marketing",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -554,7 +554,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "a652599c-4225-4aa8-abaf-88651f81263a",
+      "id": "acbf2a8e-0749-403a-a9b3-df1308b26884",
       "name": "Guardar informe Marketing",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,

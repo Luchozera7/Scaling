@@ -9,10 +9,15 @@ y como mensaje se le pasa el comercio (una fila de la planilla) más lo que dije
 1. `it_producto.md`: qué le falta al comercio y qué le ofrecemos.
 2. `prospeccion.md`: qué tan buen cliente es.
 3. `finanzas.md`: presupuesto según las horas de desarrollo, implementación y mantenimiento, proyección a 3, 6 y 12 meses e impacto en nuestra caja.
-4. `legal.md`: borrador de contrato, riesgos para el CEO y lo que necesita un abogado o contador.
-5. `jefe_de_gabinete.md`: el gerente general. Revisa todo, elige como máximo 3, marca lo que no sirve y trae el próximo paso para el CEO.
+4. `adelanto.md` (IT y Producto): la maqueta que Lucho le lleva al comercio con la propuesta (la página, la turnera, el chatbot o lo que corresponda).
+5. `legal.md`: controla que lo que ofrecemos y mostramos esté dentro de la ley y no exponga al CEO, y avisa lo que necesita un abogado o contador. No redacta contratos.
+6. `jefe_de_gabinete.md`: el gerente general. Revisa todo, elige como máximo 3, marca lo que no sirve y trae el próximo paso para el CEO.
 
-Los agentes 1 a 3 se corren una vez por comercio. Legal solo se corre con los 5 que mejor suman puntaje entre IT, Prospección y Finanzas (la cuenta la hace n8n, sin Claude). El Jefe de Gabinete se corre una vez con todo junto.
+Los agentes 1 a 3 se corren una vez por comercio. El adelanto y Legal solo se corren con los 5 que mejor suman puntaje entre IT, Prospección y Finanzas (la cuenta la hace n8n, sin Claude). El Jefe de Gabinete se corre una vez con todo junto.
+
+## Cuando un cliente acepta
+
+- `legal_contrato.md` (Legal): borrador del contrato con lo que acordó Lucho con el cliente, los riesgos y lo que falta completar.
 
 ## Una vez por tipo de oferta
 
@@ -50,5 +55,5 @@ Siempre JSON, con el mismo formato base, para que n8n lo pueda guardar en la pla
 }
 ```
 
-Cada agente agrega sus propios campos (por ejemplo `oferta` o `presupuesto`). Legal, el Contador, Posventa, Marketing, el Jefe de Gabinete y los chatbots usan su propio formato.
+Cada agente agrega sus propios campos (por ejemplo `oferta` o `presupuesto`). Legal, el adelanto, el Contador, Posventa, Marketing, el Jefe de Gabinete y los chatbots usan su propio formato.
 Si un dato no se sabe, el agente pone "sin dato" y no lo inventa.
