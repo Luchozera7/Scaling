@@ -17,6 +17,9 @@ AGENTES = RAIZ / "agentes"
 SALIDA = Path(__file__).resolve().parent
 MODELO = "claude-opus-5-5"
 PLANILLA = "PEGÁ ACÁ EL LINK DE TU PLANILLA"
+# Largo máximo de cada respuesta. Opus 5.5 siempre piensa antes de responder y lo que piensa
+# cuenta dentro de este límite: con menos, las respuestas largas (como la de Legal) se cortan.
+MAX_TOKENS = 16000
 
 # Pestañas de la planilla y sus columnas.
 PESTANAS = {
@@ -139,14 +142,14 @@ def guardar_hoja(f, nombre, pestana, pos=None):
     }, pos)
 
 
-def claude(f, nombre, agente, mensaje, max_tokens=4000, pos=None, system=None):
+def claude(f, nombre, agente, mensaje, pos=None, system=None):
     return f.nodo(nombre, "@n8n/n8n-nodes-langchain.anthropic", 1, {
         "resource": "text", "operation": "message",
         "modelId": {"__rl": True, "mode": "id", "value": MODELO},
         "messages": {"values": [{"content": mensaje, "role": "user"}]},
         "simplify": True,
         "options": {"system": system or instrucciones(agente), "includeMergedResponse": True,
-                    "maxTokens": max_tokens},
+                    "maxTokens": MAX_TOKENS},
     }, pos)
 
 
@@ -209,8 +212,7 @@ def mesa_chica():
     fi = claude(f, "Finanzas", "finanzas", (
         "=Valor de la hora de trabajo (definido por el CEO): {{ $('Config').first().json.valor_hora_ars }}\n"
         "Resumen del Contador: todavía no hay.\n\n"
-        "{{ JSON.stringify({ comercio: $json.comercio, it_y_producto: $json.it, prospeccion: $json.prospeccion }) }}"),
-        max_tokens=6000)
+        "{{ JSON.stringify({ comercio: $json.comercio, it_y_producto: $json.it, prospeccion: $json.prospeccion }) }}"))
     l_fi = codigo(f, "Leer Finanzas", (
         "const e = { ...$('Leer Prospección').item.json, finanzas: leer($json) };\n"
         "e.total = (Number(e.it.puntaje) || 0) + (Number(e.prospeccion.puntaje) || 0) + (Number(e.finanzas.puntaje) || 0);\n"
@@ -229,7 +231,7 @@ def mesa_chica():
         "return $('Leer Finanzas').all().map(i => i.json)\n"
         "  .sort((a, b) => b.total - a.total).slice(0, 5).map(json => ({ json }));"))
     ad = claude(f, "Adelanto", "adelanto", (
-        "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.it }) }}"), max_tokens=8000)
+        "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.it }) }}"))
     l_ad = codigo(f, "Leer adelanto", "return { ...$('Elegir los 5 mejores').item.json, adelanto: leer($json) };",
                   por_item=True)
     le = claude(f, "Legal", "legal", (
@@ -240,7 +242,7 @@ def mesa_chica():
         "const adelantos = $('Leer adelanto').all().map(i => { const { html, ...resto } = i.json.adelanto; return resto; });\n"
         "const evaluaciones = $('Leer Finanzas').all().map(i => i.json);\n"
         "return [{ json: { evaluaciones, adelantos, legal } }];"))
-    je = claude(f, "Jefe de Gabinete", "jefe_de_gabinete", "={{ JSON.stringify($json) }}", max_tokens=12000)
+    je = claude(f, "Jefe de Gabinete", "jefe_de_gabinete", "={{ JSON.stringify($json) }}")
     l_je = codigo(f, "Armar propuesta", (
         "const j = leer($json);\n"
         "return [{ json: {\n"
@@ -258,7 +260,7 @@ def mesa_chica():
         "const e = $('Leer adelanto').item.json;\n"
         "return { fecha: hoy, comercio: e.comercio.nombre, oferta: e.it.oferta,\n"
         "  que_va_a_ver_el_cliente: e.adelanto.que_va_a_ver_el_cliente || e.adelanto.error,\n"
-        "  legal: [r.se_puede_ofrecer, r.motivo || r.texto].filter(Boolean).join('. '),\n"
+        "  legal: r.error ? 'No se pudo leer la revisión de Legal' : [r.se_puede_ofrecer, r.motivo].filter(Boolean).join('. '),\n"
         "  supuestos: celda(JSON.stringify(e.adelanto.supuestos || [])), html: celda(e.adelanto.html || ''),\n"
         "  revision_legal: celda(JSON.stringify(r)) };"), por_item=True, pos=(x_legal + 240, 240))
     g_ad = guardar_hoja(f, "Guardar adelantos", "Adelantos", (x_legal + 480, 240))
@@ -341,7 +343,7 @@ def informes():
         "try { propuestas = $('Marketing para Clientes').all().map(i => leer(i.json)); } catch (e) {}\n"
         "return [{ json: { mes: hoy.slice(0, 7), propuestas_de_marketing_para_clientes: propuestas,\n"
         "  resultados_de_clientes: 'Todavía no hay resultados cargados.' } }];"), pos=(f.x, f.y)); f.x += 240
-    ge = claude(f, "Gerente de Marketing", "marketing", "={{ JSON.stringify($json) }}", max_tokens=8000,
+    ge = claude(f, "Gerente de Marketing", "marketing", "={{ JSON.stringify($json) }}",
                 pos=(f.x, f.y)); f.x += 240
     i3 = informe("Marketing", "(r.contenido_scaling || []).map(c => c.idea).join(' | ') || (r.texto || '')"); f.x += 240
     g3 = guardar_hoja(f, "Guardar informe Marketing", "Informes", (f.x, f.y))
@@ -378,7 +380,7 @@ def chatbot(archivo, titulo, agente, pestana_contexto, armar_contexto, pestana_l
         "const conversacion = previos.map(p => 'Cliente: ' + p.mensaje + '\\nVos: ' + p.respuesta).join('\\n\\n');\n"
         f"{armar_contexto}\n"
         "return [{ json: { system, mensaje: (conversacion ? 'Conversación hasta ahora:\\n' + conversacion + '\\n\\n' : '') + 'Nuevo mensaje: ' + msg.chatInput } }];"))
-    cl = claude(f, "Claude", agente, "={{ $json.mensaje }}", max_tokens=2000, system="={{ $json.system }}")
+    cl = claude(f, "Claude", agente, "={{ $json.mensaje }}", system="={{ $json.system }}")
     le = codigo(f, "Leer respuesta", (
         "const r = leer($json);\n"
         "const msg = $('Mensaje del chat').first().json;\n"
@@ -459,8 +461,7 @@ def contrato():
                    ("lo_acordado", "Completar: qué se entrega, plazos y lo que hablaron", "string")])
     cl = claude(f, "Legal - Contrato", "legal_contrato", (
         "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.oferta, instalacion_ars: $json.instalacion_ars, "
-        "abono_mensual_ars: $json.abono_mensual_ars, forma_de_pago: $json.forma_de_pago, lo_acordado: $json.lo_acordado }) }}"),
-        max_tokens=16000)
+        "abono_mensual_ars: $json.abono_mensual_ars, forma_de_pago: $json.forma_de_pago, lo_acordado: $json.lo_acordado }) }}"))
     co = codigo(f, "Armar contrato", (
         "const r = leer($json);\n"
         "return [{ json: { fecha: hoy, comercio: $('Config').first().json.comercio,\n"
@@ -545,7 +546,7 @@ def mesa_de_entrada():
         "=Chatbot: {{ $json.chatbot }}\n"
         "Nuestros clientes: {{ $json.clientes.join(', ') || 'todavía no hay' }}\n\n"
         "Conversación (cada fila es un mensaje de la persona y la respuesta del chatbot):\n"
-        "{{ JSON.stringify($json.mensajes) }}"), max_tokens=3000)
+        "{{ JSON.stringify($json.mensajes) }}"))
     caso = codigo(f, "Armar caso", (
         "const r = leer($json);\n"
         "const conv = $('Conversaciones terminadas').item.json;\n"
@@ -622,7 +623,7 @@ def implementacion():
         "  .filter(o => String(o.agente || '').toLowerCase().startsWith('seguridad:') && String(o.agente).toLowerCase().includes(oferta)).pop();\n"
         "return [{ json: { cliente: cfg.cliente, oferta: cfg.oferta, lo_acordado: cfg.lo_acordado,\n"
         "  revision_de_seguridad: revision ? revision.detalle : 'Todavía no hay revisión de seguridad de esta oferta.' } }];"))
-    cl = claude(f, "IT y Producto - Implementación", "implementacion", "={{ JSON.stringify($json) }}", max_tokens=8000)
+    cl = claude(f, "IT y Producto - Implementación", "implementacion", "={{ JSON.stringify($json) }}")
     pl = codigo(f, "Armar plan", (
         "const r = leer($json);\n"
         "const cfg = $('Config').first().json;\n"

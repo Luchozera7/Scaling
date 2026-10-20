@@ -7,7 +7,7 @@
         "width": 400,
         "height": 240
       },
-      "id": "e0be1331-24e2-41eb-a02d-13d8703acd47",
+      "id": "6a212c37-dadb-43d5-9799-b8e03261dc08",
       "name": "Nota 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -18,7 +18,7 @@
     },
     {
       "parameters": {},
-      "id": "6f09c9f6-c16a-4888-bb8f-90111bc2b9c5",
+      "id": "62d9899c-f9a7-43e3-bce6-1fc0f0e29146",
       "name": "Probar a mano",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -33,19 +33,19 @@
         "assignments": {
           "assignments": [
             {
-              "id": "e4eebba8-9510-4cd0-a261-29a3fabd8e4b",
+              "id": "3f10dca0-bcb3-43b9-8f24-63b364ce17f6",
               "name": "planilla",
               "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
               "type": "string"
             },
             {
-              "id": "34b6d1df-a58b-4251-af42-77514bd7a8a4",
+              "id": "15a0550d-a4d5-4b2e-a75b-b7a395c26be5",
               "name": "oferta",
               "value": "turnos online",
               "type": "string"
             },
             {
-              "id": "2822a9d4-021c-4f39-b1cc-6f0a72325992",
+              "id": "510e5fd0-7362-4c66-bc27-6b32186a4af9",
               "name": "como_la_armamos",
               "value": "Completar: qué herramienta usamos, dónde se guardan los datos y quién accede.",
               "type": "string"
@@ -54,7 +54,7 @@
         },
         "options": {}
       },
-      "id": "f8356690-9b3d-41f7-8a33-5c8746796eb3",
+      "id": "47fdc433-b14f-4ebc-b6c2-3dd44ed9b329",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -84,10 +84,10 @@
         "options": {
           "system": "Sos el gerente de IT y Producto de Scaling, una agencia chica de Tres de Febrero (Buenos Aires) que les arma herramientas digitales a comercios de barrio. Ahora hacés la revisión de seguridad de una de nuestras ofertas, no de un comercio. Se hace una vez por tipo de oferta y se repite solo si la oferta cambia.\n\nTe van a pasar la oferta (turnos online, web, chatbot de WhatsApp o Instagram, o inventario y caja) y cómo la armamos: herramientas, dónde se guardan los datos y quién accede.\n\nRevisá y listá cómo se cubre cada punto que aplique a esta oferta:\n- Fuga de instrucciones (prompts): un cliente del comercio no tiene que poder hacerle decir al chatbot sus instrucciones internas, datos de otros clientes ni nada fuera de su tarea.\n- Manipulación del chatbot: mensajes que intentan cambiarle el rol, hacerle prometer precios o turnos que no existen, o sacarlo de tema.\n- Datos personales de los clientes del comercio (nombres, teléfonos, turnos): dónde se guardan, quién accede y cuánto tiempo se conservan.\n- Claves y accesos: ninguna clave en el código ni en mensajes; cada comercio con sus propias cuentas y permisos mínimos.\n- Si un servicio de terceros se cae (WhatsApp, Meta, Google, Claude): qué ve el cliente final y cómo se avisa.\n- Precisión: el chatbot solo responde con datos que el comercio cargó (horarios, precios, servicios). Si no sabe, deriva a una persona.\n- Pruebas antes de entregar: qué hay que probar, incluidos intentos de manipulación.\n\nSi un riesgo no se puede cubrir con lo que ofrecemos, decilo: es mejor no vender algo que vender algo inseguro.\n\nRespondé solo con este JSON, sin ``` ni texto antes o después:\n{\n  \"agente\": \"IT y Producto - Seguridad\",\n  \"oferta\": \"<cuál>\",\n  \"seguridad\": [{\"riesgo\": \"<qué>\", \"como_se_cubre\": \"<texto>\", \"cubierto\": <true o false>}],\n  \"pruebas_antes_de_entregar\": [\"<prueba>\", \"...\"],\n  \"se_puede_vender\": <true o false>,\n  \"motivo\": \"<una o dos oraciones>\"\n}",
           "includeMergedResponse": true,
-          "maxTokens": 4000
+          "maxTokens": 16000
         }
       },
-      "id": "28e9d937-ac2e-4bf0-8a67-7bf293073d84",
+      "id": "46621fc5-37d9-4e51-abe2-99e9ae1da550",
       "name": "Seguridad",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
@@ -100,7 +100,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, agente: 'Seguridad: ' + (r.oferta || ''), resumen: (r.se_puede_vender ? 'Se puede vender. ' : 'No se puede vender todavía. ') + (r.motivo || r.texto || ''), detalle: celda(JSON.stringify(r)) } }];"
       },
-      "id": "2d6ec8cc-8eb4-4374-a3be-5c4b1464bca0",
+      "id": "4ae4ff17-e2c5-4ea9-9d4d-861c852a17a0",
       "name": "Armar informe",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -133,7 +133,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "6117e8ff-cb76-4f60-a64a-73579b2d5013",
+      "id": "95333e3f-2898-4cb5-a145-d9a981ddb005",
       "name": "Guardar informe",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,

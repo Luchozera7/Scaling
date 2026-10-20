@@ -7,7 +7,7 @@
         "width": 400,
         "height": 240
       },
-      "id": "5cf8a545-f10e-41e2-9f0f-a7f5a4a5125b",
+      "id": "b766ab43-c273-47d9-99d9-ba39a5ebd232",
       "name": "Nota 1",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -18,7 +18,7 @@
     },
     {
       "parameters": {},
-      "id": "30c967c0-2ab5-49de-8bf8-8a03b154097b",
+      "id": "3ead4f81-c32a-4632-b2d4-37ed2b1d94b8",
       "name": "Probar a mano",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
@@ -33,43 +33,43 @@
         "assignments": {
           "assignments": [
             {
-              "id": "2c95d3ad-f29b-4f90-bd76-aad30dc469db",
+              "id": "3ae71481-509e-4389-beec-bbda90ad9405",
               "name": "planilla",
               "value": "PEGÁ ACÁ EL LINK DE TU PLANILLA",
               "type": "string"
             },
             {
-              "id": "653f7118-aabf-409b-9c7b-a0a77a018648",
+              "id": "692e444f-1ab0-47fd-ba01-b0ac991816a8",
               "name": "comercio",
               "value": "Nombre del comercio",
               "type": "string"
             },
             {
-              "id": "fafa64bb-05e9-42c4-95ab-e0cafb21d6f8",
+              "id": "1d2c4cb9-f833-4912-80bc-3059375fed0b",
               "name": "oferta",
               "value": "turnos online",
               "type": "string"
             },
             {
-              "id": "08aa0fe4-5bf0-413e-9de8-8d7dbfc7924b",
+              "id": "c3b917eb-e880-4440-876a-2e17309552d4",
               "name": "instalacion_ars",
               "value": "Completar",
               "type": "string"
             },
             {
-              "id": "3fd8fd80-0cff-48d1-b2b1-e3ea89473104",
+              "id": "d0f7329a-4b4c-4c9e-a2b6-ac960c87330f",
               "name": "abono_mensual_ars",
               "value": "Completar",
               "type": "string"
             },
             {
-              "id": "3ac0b599-0b60-4dcd-9e15-a800180ab90a",
+              "id": "d89b460f-726c-45c7-bc31-9e58e73e7fea",
               "name": "forma_de_pago",
               "value": "Completar: por ejemplo, transferencia del 1 al 10 de cada mes",
               "type": "string"
             },
             {
-              "id": "09f93d25-2e06-4529-83b1-39e7e7418665",
+              "id": "728c7d49-dc15-4485-b0eb-0923a1f0a43a",
               "name": "lo_acordado",
               "value": "Completar: qué se entrega, plazos y lo que hablaron",
               "type": "string"
@@ -78,7 +78,7 @@
         },
         "options": {}
       },
-      "id": "fafcfa88-a3c9-482a-a55a-77f5f25d2d5c",
+      "id": "502f5411-3a69-4f3a-940c-0df3d9dd7fb2",
       "name": "Config",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
@@ -111,7 +111,7 @@
           "maxTokens": 16000
         }
       },
-      "id": "7870f35b-776b-45a8-b01b-b595d3c6431a",
+      "id": "2ede09e0-e11c-43d5-9493-ae7efafbe07f",
       "name": "Legal - Contrato",
       "type": "@n8n/n8n-nodes-langchain.anthropic",
       "typeVersion": 1,
@@ -124,7 +124,7 @@
       "parameters": {
         "jsCode": "function leer(r) {\n  const texto = (r.merged_response ?? (r.content || []).filter(c => c.type === 'text').map(c => c.text).join(''))\n    .trim().replace(/^```(json)?\\s*/, '').replace(/\\s*```$/, '');\n  try { return JSON.parse(texto); } catch (e) { return { error: 'No se pudo leer la respuesta de Claude', texto }; }\n}\nconst hoy = new Date().toISOString().slice(0, 10);\n// Google Sheets acepta hasta 50.000 caracteres por celda.\nconst celda = s => (s && s.length > 45000 ? s.slice(0, 45000) + ' [cortado]' : s);\nconst r = leer($json);\nreturn [{ json: { fecha: hoy, comercio: $('Config').first().json.comercio,\n  contrato_borrador: celda(r.contrato_borrador || r.texto), falta_completar: celda(JSON.stringify(r.falta_completar || [])),\n  riesgos: celda(JSON.stringify(r.riesgos || [])), me_excede: celda(JSON.stringify(r.me_excede || [])) } }];"
       },
-      "id": "a34c0ee4-802e-4eba-9da8-47bba7aebcd3",
+      "id": "31c55df5-9772-461e-aaf5-a9d1df63942f",
       "name": "Armar contrato",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -157,7 +157,7 @@
           "handlingExtraData": "ignoreIt"
         }
       },
-      "id": "0c2effa2-6121-49f2-b6b0-fa490101855a",
+      "id": "1bf4a5f8-a5e6-4465-a769-9c02149fd7a2",
       "name": "Guardar contrato",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
