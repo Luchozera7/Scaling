@@ -38,7 +38,13 @@ Nodos, en orden:
    - Modelo: `claude-opus-5-5`.
    - Instrucciones del sistema (system prompt): pegá el contenido de `it_producto.md`.
    - Mensaje: los datos de la fila. Arrastrá desde el nodo anterior o escribí `{{ JSON.stringify($json) }}`.
-4. **Google Sheets → Append row**: pestaña "Evaluaciones". Guardá comercio, agente, puntaje y motivo, y el texto completo de la respuesta en "resultado".
+4. **Google Sheets → Append row**: pestaña "Evaluaciones", con "Map Each Column Manually". En cada casilla:
+   - comercio: `{{ JSON.parse($json.content.find(c => c.type === 'text').text).comercio }}`
+   - agente: lo mismo, terminando en `.agente }}`
+   - puntaje: lo mismo, terminando en `.puntaje }}`
+   - motivo: lo mismo, terminando en `.motivo }}`
+   - resultado: `{{ $json.content.find(c => c.type === 'text').text }}`
+   - fecha: `{{ $now.toFormat('yyyy-MM-dd') }}`
 
 Probalo. Tiene que aparecer una fila por comercio en "Evaluaciones". Mandame una captura o copiame 2 filas y las revisamos juntos antes de seguir.
 
