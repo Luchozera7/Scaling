@@ -15,7 +15,6 @@ Respondé solo con este JSON:
   "agente": "IT y Producto",
   "comercio": "<nombre>",
   "puntaje": <1 a 10>,
-  "veto": false,
   "motivo": "<una o dos oraciones>",
   "oferta": "<turnos online | web | chatbot WhatsApp/Instagram | inventario y caja>",
   "que_le_falta": ["<cosa>", "..."],

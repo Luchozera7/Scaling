@@ -15,7 +15,6 @@ Respondé solo con este JSON:
   "agente": "Marketing",
   "comercio": "<nombre>",
   "puntaje": <1 a 10>,
-  "veto": false,
   "motivo": "<una o dos oraciones>",
   "como_contactarlo": "<WhatsApp al número cargado | pasar por el local | sin forma de contacto>",
   "datos": [{"dato": "<qué usaste>", "fuente": "<de dónde salió>"}]
