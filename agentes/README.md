@@ -13,7 +13,7 @@ y como mensaje se le pasa el comercio (una fila de la planilla) más lo que dije
 5. `legal.md`: controla que lo que ofrecemos y mostramos esté dentro de la ley y no exponga al CEO, y avisa lo que necesita un abogado o contador. No redacta contratos.
 6. `jefe_de_gabinete.md`: el gerente general. Revisa todo, elige como máximo 3, marca lo que no sirve y trae el próximo paso para el CEO.
 
-Los agentes 1 a 3 se corren una vez por comercio. El adelanto y Legal solo se corren con los 5 que mejor suman puntaje entre IT, Prospección y Finanzas (la cuenta la hace n8n, sin Claude). El Jefe de Gabinete se corre una vez con todo junto.
+Los agentes 1 a 3 se corren una vez por comercio. IT, Prospección y Finanzas usan Haiku, el modelo más barato. El adelanto y Legal solo se corren con los 2 que mejor suman puntaje entre los tres, y solo si llegan al mínimo de 18 sobre 30 (la cuenta la hace n8n, sin Claude; los dos números se cambian en Config). El Jefe de Gabinete se corre una vez con todo junto. Si nadie llega al mínimo, la mesa corta ahí y no gasta más.
 
 ## Cuando un cliente acepta
 

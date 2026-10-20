@@ -16,6 +16,8 @@ RAIZ = Path(__file__).resolve().parent.parent
 AGENTES = RAIZ / "agentes"
 SALIDA = Path(__file__).resolve().parent
 MODELO = "claude-opus-5-5"
+# Para poner puntajes alcanza Haiku, el modelo más barato: cuesta unas 30 veces menos que Opus.
+MODELO_BARATO = "claude-haiku-5-5"
 PLANILLA = "PEGÁ ACÁ EL LINK DE TU PLANILLA"
 # Largo máximo de cada respuesta. Opus 5.5 siempre piensa antes de responder y lo que piensa
 # cuenta dentro de este límite: con menos, las respuestas largas (como la de Legal) se cortan.
@@ -142,10 +144,10 @@ def guardar_hoja(f, nombre, pestana, pos=None):
     }, pos)
 
 
-def claude(f, nombre, agente, mensaje, pos=None, system=None):
+def claude(f, nombre, agente, mensaje, pos=None, system=None, modelo=MODELO):
     return f.nodo(nombre, "@n8n/n8n-nodes-langchain.anthropic", 1, {
         "resource": "text", "operation": "message",
-        "modelId": {"__rl": True, "mode": "id", "value": MODELO},
+        "modelId": {"__rl": True, "mode": "id", "value": modelo},
         "messages": {"values": [{"content": mensaje, "role": "user"}]},
         "simplify": True,
         "options": {"system": system or instrucciones(agente), "includeMergedResponse": True,
@@ -187,10 +189,12 @@ def mesa_chica():
         "1. En **Config** pegá el link de tu planilla y el valor de tu hora.\n"
         "2. En cada nodo de Claude y de Google Sheets elegí tu credencial.\n"
         "3. Para probar: **Execute workflow**. Evalúa los comercios que todavía no evaluó, primero los leads (max_comercios en Config).\n"
+        "   Adelanto, Legal y Jefe corren solo con los mejores que llegan a puntaje_minimo (de 30).\n"
         "4. El resultado queda en las pestañas **Evaluaciones**, **Adelantos** y **Propuestas**.\n\n"
         "El disparador Automático corre los lunes a las 9 cuando publiques el flujo."))
     a, b = disparadores(f, {"field": "weeks", "triggerAtDay": [1], "triggerAtHour": 9})
-    c = config(f, [("max_comercios", 5, "number"), ("valor_hora_ars", "sin definir", "string")])
+    c = config(f, [("max_comercios", 5, "number"), ("puntaje_minimo", 18, "number"), ("mejores", 2, "number"),
+                   ("valor_hora_ars", "sin definir", "string")])
     f.unir(a, c)
     f.unir(b, c)
     leer = leer_hoja(f, "Leer comercios", "Comercios")
@@ -202,17 +206,18 @@ def mesa_chica():
         "const esLead = c => String(c.fuente || '').startsWith('Lead');\n"
         "return [...pendientes.filter(esLead), ...pendientes.filter(c => !esLead(c))]\n"
         "  .slice(0, $('Config').first().json.max_comercios).map(json => ({ json }));"))
-    it = claude(f, "IT y Producto", "it_producto", "=Comercio:\n{{ JSON.stringify($json) }}")
+    it = claude(f, "IT y Producto", "it_producto", "=Comercio:\n{{ JSON.stringify($json) }}", modelo=MODELO_BARATO)
     l_it = codigo(f, "Leer IT", "return { comercio: $('Elegir comercios').item.json, it: leer($json) };",
                   por_item=True)
     pr = claude(f, "Prospección", "prospeccion",
-                "={{ JSON.stringify({ comercio: $json.comercio, it_y_producto: $json.it }) }}")
+                "={{ JSON.stringify({ comercio: $json.comercio, it_y_producto: $json.it }) }}", modelo=MODELO_BARATO)
     l_pr = codigo(f, "Leer Prospección",
                   "return { ...$('Leer IT').item.json, prospeccion: leer($json) };", por_item=True)
     fi = claude(f, "Finanzas", "finanzas", (
         "=Valor de la hora de trabajo (definido por el CEO): {{ $('Config').first().json.valor_hora_ars }}\n"
         "Resumen del Contador: todavía no hay.\n\n"
-        "{{ JSON.stringify({ comercio: $json.comercio, it_y_producto: $json.it, prospeccion: $json.prospeccion }) }}"))
+        "{{ JSON.stringify({ comercio: $json.comercio, it_y_producto: $json.it, prospeccion: $json.prospeccion }) }}"),
+                modelo=MODELO_BARATO)
     l_fi = codigo(f, "Leer Finanzas", (
         "const e = { ...$('Leer Prospección').item.json, finanzas: leer($json) };\n"
         "e.total = (Number(e.it.puntaje) || 0) + (Number(e.prospeccion.puntaje) || 0) + (Number(e.finanzas.puntaje) || 0);\n"
@@ -227,12 +232,21 @@ def mesa_chica():
         "  detalle: celda(JSON.stringify({ it: $json.it, prospeccion: $json.prospeccion, finanzas: $json.finanzas })),\n"
         "};"), por_item=True)
     g_ev = guardar_hoja(f, "Guardar evaluaciones", "Evaluaciones")
-    top = codigo(f, "Elegir los 5 mejores", (
-        "return $('Leer Finanzas').all().map(i => i.json)\n"
-        "  .sort((a, b) => b.total - a.total).slice(0, 5).map(json => ({ json }));"))
+    top = codigo(f, "Elegir los mejores", (
+        "// Adelanto y Legal solo para los mejores que llegan al puntaje mínimo (de 30).\n"
+        "const { puntaje_minimo, mejores } = $('Config').first().json;\n"
+        "const todos = $('Leer Finanzas').all().map(i => i.json);\n"
+        "const elegidos = todos.filter(e => e.total >= puntaje_minimo).sort((a, b) => b.total - a.total).slice(0, mejores);\n"
+        "if (elegidos.length) return elegidos.map(json => ({ json }));\n"
+        "const maximo = Math.max(...todos.map(e => e.total));\n"
+        "return [{ json: { ninguno: true, fecha: hoy, elegidos: '', propuesta_para_el_ceo:\n"
+        "  `Esta semana ningún comercio llegó al mínimo de ${puntaje_minimo} puntos sobre 30 (el mejor sacó ${maximo}). ` +\n"
+        "  'No se armaron adelantos ni se consultó a Legal ni al Jefe.' } }];"))
+    si = f.nodo("¿Alguno pasó?", "n8n-nodes-base.if", 2.2, condicion("={{ !$json.ninguno }}"))
+    x_si = f.x - 240
     ad = claude(f, "Adelanto", "adelanto", (
         "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.it }) }}"))
-    l_ad = codigo(f, "Leer adelanto", "return { ...$('Elegir los 5 mejores').item.json, adelanto: leer($json) };",
+    l_ad = codigo(f, "Leer adelanto", "return { ...$('Elegir los mejores').item.json, adelanto: leer($json) };",
                   por_item=True)
     le = claude(f, "Legal", "legal", (
         "={{ JSON.stringify({ comercio: $json.comercio, oferta: $json.it, presupuesto: $json.finanzas, adelanto: $json.adelanto }) }}"))
@@ -252,7 +266,9 @@ def mesa_chica():
         "  detalle: celda(JSON.stringify(j)),\n"
         "} }];"))
     g_pr = guardar_hoja(f, "Guardar propuesta", "Propuestas")
-    f.cadena(c, leer, l_ev, lim, it, l_it, pr, l_pr, fi, l_fi, fila, g_ev, top, ad, l_ad, le, l_le, je, l_je, g_pr)
+    f.cadena(c, leer, l_ev, lim, it, l_it, pr, l_pr, fi, l_fi, fila, g_ev, top, si, ad, l_ad, le, l_le, je, l_je, g_pr)
+    # Si nadie llegó al mínimo, queda el aviso en "Propuestas" y no se gasta en el resto.
+    f.unir(si, guardar_hoja(f, "Guardar aviso", "Propuestas", (x_si + 240, -240)), 1)
     # Cada adelanto va a su propia fila en "Adelantos", con lo que dijo Legal.
     x_legal = next(n["position"][0] for n in f.nodos if n["name"] == le)
     fa = codigo(f, "Armar adelanto", (
@@ -267,7 +283,7 @@ def mesa_chica():
     f.cadena(le, fa, g_ad)
     # Ejecutar estos una sola vez aunque les lleguen varias filas.
     for n in f.nodos:
-        if n["name"] in ("Leer evaluaciones", "Elegir los 5 mejores"):
+        if n["name"] in ("Leer evaluaciones", "Elegir los mejores"):
             n["executeOnce"] = True
     f.guardar("1_mesa_chica_semanal.json")
 
